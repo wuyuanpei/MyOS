@@ -123,6 +123,8 @@ int fifo8_status(struct FIFO8 *fifo);
 void HariMain(void);
 /* System fatal error: this method never returns*/
 void sys_error(char * error_info);
+/* Draw a window */
+void make_window(unsigned char *buf, int xsize, int ysize, char *title);
 
 /* mouse.c */
 /* Mouse Decode Struct*/
@@ -154,7 +156,8 @@ void init_keyboard(void);
 #define EFLAGS_AC_BIT			0x00040000
 #define CR0_CACHE_DISABLE		0x60000000
 #define FREE_MEMORY_BEGINNING	0x00400000
-#define MAX_FREE_MEMORY_ENDING	0xdfffffff
+#define MAX_FREE_MEMORY_ENDING	0xdfffffff // 3GB; some vram starts from there
+#define MIN_MEMORY_REQUIRED		0x00A00000 // At least 10 MB memory for the OS
 unsigned int memtest(unsigned int start, unsigned int end);
 unsigned int mm_check(void);
 void mm_init(unsigned int *start, unsigned int *end);
@@ -176,7 +179,7 @@ struct SHEET {
 };
 /* Sheet contoller */
 struct SHTCTL {
-	unsigned char *vram; // bootinfo->vram
+	unsigned char *vram, *map; // bootinfo->vram; map: a map to map every pixel in vram to sheet
 	// bootinfo->xsize, bootinfo->ysize, the height of the uppermost sheet
 	int xsize, ysize, top;
 	// sort sheets by height and store addresses here (only store non-negative height sheet)
@@ -192,6 +195,6 @@ void shtctl_init(unsigned char *vram, int xsize, int ysize);
 struct SHEET *sheet_alloc(void);
 void sheet_setbuf(struct SHEET *sht, unsigned char *buf, int xsize, int ysize, int col_inv);
 void sheet_updown(struct SHEET *sht, int height);
-void sheet_refresh(struct SHEET *sht, int bx0, int by0, int bx1, int by1);
+void sheet_refresh(struct SHEET *sht, int bx0, int by0, int bx1, int by1, int change_visibility);
 void sheet_slide(struct SHEET *sht, int vx0, int vy0);
 void sheet_free(struct SHEET *sht);

@@ -48,8 +48,8 @@ unsigned char fifo8_get(struct FIFO8 *fifo)
 	return data;
 }
 
-int fifo8_status(struct FIFO8 *fifo)
 /* return the current length of the circular queue */
+int fifo8_status(struct FIFO8 *fifo)
 {
 	return fifo->size - fifo->free;
 }
