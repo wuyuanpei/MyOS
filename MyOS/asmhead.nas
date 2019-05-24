@@ -1,5 +1,13 @@
 ; MyOS boot asm
-; TAB=4
+; TAB = 4
+[INSTRSET "i486p"]				; using 486 instruction set
+
+VBEMODE	EQU		0x105			; 1024 x  768 x 8bit
+;	0x100 :  640 x  400 x 8bit
+;	0x101 :  640 x  480 x 8bit
+;	0x103 :  800 x  600 x 8bit
+;	0x105 : 1024 x  768 x 8bit
+;	0x107 : 1280 x 1024 x 8bit
 
 BOTPAK	EQU		0x00280000		; Bootpack Address
 DSKCAC	EQU		0x00100000		; Disk in the memory address
@@ -13,11 +21,57 @@ SCRNX	EQU		0x0ff4			; x solution
 SCRNY	EQU		0x0ff6			; y solution
 VRAM	EQU		0x0ff8			; Starting address of Display Buffer
 
-		ORG		0xc200			; Starting address of the boot program
+		ORG		0xc200		; Starting address of the boot program
 
-; Set up GUI
+; Set up the screen
+; Check VBE
+		MOV		AX,0x9000
+		MOV		ES,AX
+		MOV		DI,0		; ES:DI temporary address to store VBE information
+		MOV		AX,0x4f00
+		INT		0x10
+		CMP		AX,0x004f	; If VBE exists, AX will become 0x004f
+		JNE		scrn320		; Else we have to use 320 x 200
 
-		MOV		AL,0x13			; VGA, 320x200x8bit
+; Check VBE version
+		MOV		AX,[ES:DI+4]	; 
+		CMP		AX,0x0200
+		JB		scrn320		; If AX < 0x200 (VBE version < 2.0)
+
+; Check whether VBEMODE is feasible
+		MOV		CX,VBEMODE
+		MOV		AX,0x4f01
+		INT		0x10
+		CMP		AX,0x004f
+		JNE		scrn320		; Check whether VBEMODE is feasible
+
+; Check VBE information
+		CMP		BYTE [ES:DI+0x19],8	; Color Number (has to be 8)
+		JNE		scrn320
+		CMP		BYTE [ES:DI+0x1b],4	; Palette Mode (has to be 4)
+		JNE		scrn320
+		MOV		AX,[ES:DI+0x00]		; Mode Property (bit7 has to be 1)
+		AND		AX,0x0080
+		JZ		scrn320
+
+; Use VBEMODE
+		MOV		BX,VBEMODE+0x4000
+		MOV		AX,0x4f02		; VBE setup
+		INT		0x10
+		MOV		BYTE [VMODE],8		; Screen mode
+		MOV		AX,[ES:DI+0x12]
+		MOV		[SCRNX],AX		; xsize
+		MOV		AX,[ES:DI+0x14]
+		MOV		[SCRNY],AX		; ysize
+		MOV		EAX,[ES:DI+0x28]
+		MOV		[VRAM],EAX		; vram address
+		JMP		keystatus
+
+
+; Set up 320x200x8bit
+
+scrn320:	
+		MOV		AL,0x13		; VGA, 320 x 200 x 8bit
 		MOV		AH,0x00
 		INT		0x10
 		MOV		BYTE [VMODE],8	; Screen mode
@@ -27,6 +81,7 @@ VRAM	EQU		0x0ff8			; Starting address of Display Buffer
 
 ; Use BIOS to get keyboard status
 
+keystatus:	
 		MOV		AH,0x02
 		INT		0x16 			; keyboard BIOS
 		MOV		[LEDS],AL
@@ -38,7 +93,7 @@ VRAM	EQU		0x0ff8			; Starting address of Display Buffer
 		NOP
 		OUT		0xa1,AL			; io_out(PIC1_IMR, 0xff);
 
-		CLI						; set IF in CPU
+		CLI					; set IF in CPU
 
 ; Set A20GATE
 
@@ -46,14 +101,11 @@ VRAM	EQU		0x0ff8			; Starting address of Display Buffer
 		MOV		AL,0xd1
 		OUT		0x64,AL
 		CALL	waitkbdout
-		MOV		AL,0xdf			; enable A20 to support 32 bit memory
+		MOV		AL,0xdf		; enable A20 to support 32 bit memory
 		OUT		0x60,AL
 		CALL	waitkbdout
 
 ; real mode to protected mode
-
-[INSTRSET "i486p"]				; using 486 instruction set
-
 		LGDT	[GDTR0]			; set temporary GDT
 		MOV		EAX,CR0			; reset CR0 (Control Register 0)
 		AND		EAX,0x7fffffff	; clear bit 31 (no paging)

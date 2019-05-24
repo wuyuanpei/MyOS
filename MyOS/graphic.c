@@ -16,9 +16,9 @@ void init_palette(void)
 		0x84, 0x00, 0x00,	/*  9:Dark red */
 		0x00, 0x84, 0x00,	/* 10:Dark green */
 		0x84, 0x84, 0x00,	/* 11:Dark yellow */
-		0x00, 0x00, 0x84,	/* 12:Dark cyan */
+		0x00, 0x00, 0x84,	/* 12:Dark blue */
 		0x84, 0x00, 0x84,	/* 13:Dark purple */
-		0x00, 0x84, 0x84,	/* 14:Dark blue */
+		0x00, 0x84, 0x84,	/* 14:Dark cyan */
 		0x84, 0x84, 0x84	/* 15:Dark gray */
 	};
 	int i, eflags;
@@ -46,8 +46,7 @@ void draw_rect(char *vram, int xsize, unsigned char c, int x0, int y0, int x1, i
 }
 
 void init_screen(char *vram, int xsize, int ysize){
-	draw_rect(vram, xsize, COL8_D_CYAN, 0, 0, xsize - 1, ysize - 29);
-	draw_rect(vram, xsize, COL8_D_GRAY, 0, ysize - 10, xsize - 1, ysize - 28);
+	draw_rect(vram, xsize, COL8_D_CYAN, 0, 0, xsize - 1, ysize - 28);
 	draw_rect(vram, xsize, COL8_WHITE, 0, ysize - 27, xsize - 1, ysize - 27);
 	draw_rect(vram, xsize, COL8_D_GRAY, 0, ysize - 26, xsize - 1, ysize - 1);
 

@@ -14,6 +14,7 @@ void fifo8_init(struct FIFO8 *fifo, int size, unsigned char *buf)
 	return;
 }
 
+// This method is always called by inthandler
 int fifo8_put(struct FIFO8 *fifo, unsigned char data)
 /* put data in FIFO */
 {
@@ -31,20 +32,25 @@ int fifo8_put(struct FIFO8 *fifo, unsigned char data)
 	return 0;
 }
 
+// This method is always called by system, thus INT safe
 unsigned char fifo8_get(struct FIFO8 *fifo)
 /* get data from FIFO */
 {
 	unsigned char data;
+	int eflags;
 	if (fifo->free == fifo->size) {
 		/* FIFO is empty, return -1 */
 		return -1;
 	}
+	eflags = io_load_eflags();	/* Record current INT state */
+	io_cli();
 	data = fifo->buf[fifo->q];
 	fifo->q++;
 	if (fifo->q == fifo->size) {
 		fifo->q = 0;
 	}
 	fifo->free++;
+	io_store_eflags(eflags);	/* Restore INT */
 	return data;
 }
 

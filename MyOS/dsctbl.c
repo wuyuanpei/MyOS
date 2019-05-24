@@ -27,6 +27,7 @@ void init_gdtidt(void)
 	// set_gatedesc(entry location in IDT, function pointer, 
 	// the segment number of the function << 3, access right);
 	// AR_INTGATE32 (0x8e): the interrupt is effective
+	set_gatedesc(idt + 0x20, (int) asm_inthandler20, 2 << 3, AR_INTGATE32);
 	set_gatedesc(idt + 0x21, (int) asm_inthandler21, 2 << 3, AR_INTGATE32);
 	//set_gatedesc(idt + 0x27, (int) asm_inthandler27, 2 << 3, AR_INTGATE32);
 	set_gatedesc(idt + 0x2c, (int) asm_inthandler2c, 2 << 3, AR_INTGATE32);

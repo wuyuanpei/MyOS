@@ -54,6 +54,7 @@ void load_gdtr(int limit, int addr); // Load gdtr register
 void load_idtr(int limit, int addr); // Load idtr register
 int load_cr0(void); // Load CR0
 void store_cr0(int cr0); // Store CR0
+void asm_inthandler20(void); // Inthandler preset
 void asm_inthandler21(void); // Inthandler preset
 //void asm_inthandler27(void);
 void asm_inthandler2c(void); // Inthandler preset
@@ -87,9 +88,9 @@ void draw_block(char *vram, int vxsize, int pxsize,
 #define COL8_D_RED		9
 #define COL8_D_GREEN		10
 #define COL8_D_YELLOW		11
-#define COL8_D_CYAN			12
+#define COL8_D_BLUE			12
 #define COL8_D_PURPLE		13
-#define COL8_D_BLUE			14
+#define COL8_D_CYAN			14
 #define COL8_D_GRAY			15
 
 /* int.c */
@@ -123,6 +124,8 @@ int fifo8_status(struct FIFO8 *fifo);
 void HariMain(void);
 /* System fatal error: this method never returns*/
 void sys_error(char * error_info);
+/* Print out debug information */
+void sys_debug(char * debug_info);
 /* Draw a window */
 void make_window(unsigned char *buf, int xsize, int ysize, char *title);
 
@@ -198,3 +201,32 @@ void sheet_updown(struct SHEET *sht, int height);
 void sheet_refresh(struct SHEET *sht, int bx0, int by0, int bx1, int by1, int change_visibility);
 void sheet_slide(struct SHEET *sht, int vx0, int vy0);
 void sheet_free(struct SHEET *sht);
+
+/* timer.c */
+#define PIT_CTRL		0x0043
+#define PIT_CNT0		0x0040
+/* System Timer: can store 0xffffffffffffffff units of 0.01 seconds */
+#define SYS_TMR_ADR		0x0026A414
+struct SYS_TMR {
+	unsigned int time_high, time_low;
+};
+#define TIMER_BUF_LEN			32		// FIFO Buffer Length
+struct USR_TMR {
+	unsigned int start_high, start_low;
+	unsigned int end_high, end_low;
+};
+struct TMRCTL
+{
+	struct TMRCTL *next;
+	struct USR_TMR node_data;
+	unsigned char handler;
+};
+void init_pit(void);
+void inthandler20(int *esp);
+// record the current time and record the expected ending time
+void start_usr_timing(struct USR_TMR *usr_tmr, unsigned int duration);
+// test whether the usr_tmr passes the expected ending time, if so return 1
+int test_usr_timing(struct USR_TMR *usr_tmr);
+// start timing using a handler. When timing finishes, the handler will be put into FIFO
+void start_timing(unsigned char handler, unsigned int duration);
+
