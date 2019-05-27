@@ -36,6 +36,7 @@ void set_gatedesc(struct GATE_DESCRIPTOR *gd, int offset,
 #define AR_DATA32_RW	0x4092
 #define AR_CODE32_ER	0x409a
 #define AR_INTGATE32	0x008e
+#define AR_TSS32		0x0089
 
 /** hankaku.obj */
 extern char hankaku[4096]; // Font Document
@@ -50,8 +51,9 @@ void io_store_eflags(int eflags); // Set INT state
 void io_hlt(void); // HLT
 void io_sti(void); // STI
 void io_stihlt(void); // STI HLT
-void load_gdtr(int limit, int addr); // Load gdtr register
-void load_idtr(int limit, int addr); // Load idtr register
+void load_gdtr(int limit, int addr); // Load global descriptor table register
+void load_idtr(int limit, int addr); // Load interrupt descriptor table register
+void load_tr(int tr); // Load task register
 int load_cr0(void); // Load CR0
 void store_cr0(int cr0); // Store CR0
 void asm_inthandler20(void); // Inthandler preset
@@ -60,6 +62,8 @@ void asm_inthandler21(void); // Inthandler preset
 void asm_inthandler2c(void); // Inthandler preset
 // Memory test
 unsigned int memtest_sub(unsigned int start, unsigned int end);
+// Far jump, used in context switching
+void farjmp(int eip, int cs);
 
 /** graphic.c */
 void init_palette(void); // Initialize palette
@@ -126,8 +130,8 @@ void HariMain(void);
 void sys_error(char * error_info);
 /* Print out debug information */
 void sys_debug(char * debug_info);
-/* Draw a window */
-void make_window(unsigned char *buf, int xsize, int ysize, char *title);
+/* Draw a window: act: the window is active */
+void make_window(unsigned char *buf, int xsize, int ysize, char *title, char act);
 
 /* mouse.c */
 /* Mouse Decode Struct*/
@@ -146,6 +150,8 @@ int mouse_decode(struct MOUSE_DEC *mdec, unsigned char dat);
 void inthandler21(int *esp);
 void wait_KBC_sendready(void);
 void init_keyboard(void);
+/* Turn a key on the keyboard to a character */
+char key_to_char(unsigned char key);
 /* Keyboard controller */
 #define PORT_KEYDAT				0x0060
 #define PORT_KEYSTA				0x0064
@@ -230,3 +236,43 @@ int test_usr_timing(struct USR_TMR *usr_tmr);
 // start timing using a handler. When timing finishes, the handler will be put into FIFO
 void start_timing(unsigned char handler, unsigned int duration);
 
+/* mtask.c */
+#define MAX_TASKS		1000	/* Maximum number of tasks */
+#define TASK_GDT0		3		/* First TSS entry in GDT */
+#define MAX_TASKS_LV	100		/* The number of tasks per level */
+#define MAX_TASKLEVELS	10		/* The number of levels */
+/* Task Status Segment, defined by CPU */
+struct TSS32 {
+	int backlink, esp0, ss0, esp1, ss1, esp2, ss2, cr3;
+	int eip, eflags, eax, ecx, edx, ebx, esp, ebp, esi, edi;
+	int es, cs, ss, ds, fs, gs;
+	int ldtr, iomap;
+};
+#define TASK_UNUSED		0
+#define TASK_USED		1
+#define TASK_RUNNING	2
+struct TASK {
+	/* sel: the entry number of this task in GDT (GDT selector) */
+	/* flags: the status of the task */
+	/* priority: the priority of the task (10 [0.1s] ~ 1 [0.01s])*/
+	/* level: the level of the task */
+	int sel, flags, priority, level;
+	struct TSS32 tss;
+};
+struct TASKLEVEL {
+	int running; /* The number of tasks running */
+	int now; /* Which task is running */
+	struct TASK *tasks[MAX_TASKS_LV]; /* All the tasks in this level */
+};
+struct TASKCTL {
+	int now_lv; /* The level running*/
+	char lv_change; /* Whether to change a level when context switching */
+	struct TASKLEVEL level[MAX_TASKLEVELS];
+	struct TASK tasks0[MAX_TASKS];
+};
+struct TASK *task_init(void); // Initialize multitask system, update GDT with TSS, turn mtask_on on
+struct TASK *task_alloc(void); // Allocate a new task, tag flag TASK_USED
+void task_run(struct TASK *task, int level, int priority); // Run a task, tag flag TASK_RUNNING, put it into the list
+void task_switch(void); // Switch to the next task (always called by inthandler20)
+void task_sleep(struct TASK *task); // Sleep a task, tag flag TASK_USED, drop it from the list
+struct TASK *task_now(void); // Return the current running task

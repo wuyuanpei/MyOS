@@ -2,6 +2,8 @@
 
 #include "bootpack.h"
 
+extern char mtask_on;
+
 struct FIFO8 timerfifo;
 
 struct TMRCTL* first;
@@ -28,15 +30,18 @@ void inthandler20(int *esp)
 	if(tmr->time_low == 0)
 		tmr->time_high++;
 	// Test nodes in the user timer list
-	if(first == 0) return;
+	if(first == 0) goto context_switching;
 	while(test_usr_timing(& first->node_data)){
 		fifo8_put(&timerfifo,first->handler);
 		tmp = first;
 		first = first->next;
 		// corresponding to: struct TMRCTL *node = (struct TMRCTL *)mm_malloc(sizeof(struct TMRCTL));
 		mm_free(tmp);
-		if(first == 0) return;
+		if(first == 0) goto context_switching;
 	}
+context_switching:
+	if(mtask_on)
+		task_switch();
 }
 
 void start_usr_timing(struct USR_TMR *usr_tmr, unsigned int duration)

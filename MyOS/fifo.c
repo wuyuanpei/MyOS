@@ -2,6 +2,8 @@
 
 #include "bootpack.h"
 
+extern struct TASK *task_kernal;
+
 void fifo8_init(struct FIFO8 *fifo, int size, unsigned char *buf)
 /* Initialize FIFO */
 {
@@ -29,6 +31,7 @@ int fifo8_put(struct FIFO8 *fifo, unsigned char data)
 		fifo->p = 0;
 	}
 	fifo->free--;
+	task_run(task_kernal, -1, 0);
 	return 0;
 }
 

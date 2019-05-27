@@ -6,6 +6,29 @@ extern struct FIFO8 keyfifo;
 extern struct FIFO8 mousefifo;
 extern struct FIFO8 timerfifo;
 
+extern char mtask_on;
+
+// The kernal task
+struct TASK *task_kernal;
+
+void task_b_main(void){
+	char buf[20]; // string buffer
+	struct SYS_TMR *tmr = (struct SYS_TMR *)SYS_TMR_ADR; //Address for System Timer
+	struct SHEET *sht_window = sheet_alloc();
+	unsigned char *buf_window = mm_malloc(150*50); // window size
+	sheet_setbuf(sht_window, buf_window, 150, 50, 0xff); // 0xff for col_inv
+	make_window(buf_window, 150, 50, "System Timer", 0);
+	sheet_updown(sht_window, 2);
+	sheet_slide(sht_window, 155, 70);
+	while(1){
+		draw_rect(buf_window, 150, COL8_GRAY, 25, 25, 125, 40);
+		sprintf(buf,"%02d%09d",tmr->time_high,tmr->time_low);
+		draw_string(buf_window, 150, COL8_BLACK, 25, 25, buf);
+		sheet_refresh(sht_window, 25, 25, 125, 41, 0);
+		//task_sleep(task_now());
+	}
+}
+
 /* Entrance of the system addr[2*8:0x0000001b] after SPL */
 void HariMain(void)
 {
@@ -18,7 +41,7 @@ void HariMain(void)
 	// Address for BOOTINFO
 	struct BOOTINFO *binfo = (struct BOOTINFO *)ADR_BOOTINFO;
 	// Address for System Timer
-	//struct SYS_TMR *tmr = (struct SYS_TMR *)SYS_TMR_ADR;
+	struct SYS_TMR *tmr = (struct SYS_TMR *)SYS_TMR_ADR;
 	// A user timer
 	//struct USR_TMR usr_tmr1, usr_tmr2, usr_tmr3;
 	// Mouse decoder
@@ -28,8 +51,10 @@ void HariMain(void)
 	unsigned char *buf_back, *buf_mouse, *buf_window1; // free memory address for sheet buffer
 	// Mouse location (for display)
 	int mx, my;
+	// Input Signal
+	char input_signal = 0;
 	// System Test
-	int count = 0;
+	//int count = 0;
 	/* Memory test */
 	mem_end = memtest(FREE_MEMORY_BEGINNING, MAX_FREE_MEMORY_ENDING);
 	/* Stop initializing the system */
@@ -69,7 +94,7 @@ void HariMain(void)
 	sheet_setbuf(sht_mouse, buf_mouse, 16, 16, 0xff); // 0xff for col_inv
 	sheet_setbuf(sht_window1, buf_window1, 150, 75, 0xff); // 0xff for col_inv
 	
-	make_window(buf_window1, 150, 75, "First Window");
+	make_window(buf_window1, 150, 75, "System Timer", 1);
 	init_screen(buf_back, binfo->xsize, binfo->ysize);
 	init_mouse_cursor(buf_mouse,0xff); // background is transparent
 	
@@ -79,7 +104,7 @@ void HariMain(void)
 	// Set priority
 	sheet_updown(sht_back, 0);
 	sheet_updown(sht_window1, 1);
-	sheet_updown(sht_mouse, 2);
+	sheet_updown(sht_mouse, 3);
 
 	sheet_slide(sht_mouse, mx, my);
 	sheet_slide(sht_back, 0, 0);
@@ -96,49 +121,59 @@ void HariMain(void)
 	draw_string(buf_back, binfo->xsize, COL8_WHITE, 0, 48, buf);
 	sheet_refresh(sht_back, 0, 0, binfo->xsize, binfo->ysize, 0);
 
-	// Initialize usr_tmr
-	start_timing(2, 100);
+	// System timing
 	start_timing(1, 50);
-	//start_timing(3, 1000);
+	
+	// Task
+	task_kernal = task_init();
+	struct TASK *task_b;
+	task_b = task_alloc();
+	task_b->tss.esp = (unsigned int)mm_malloc(64 * 1024) + 64 * 1024; // 64 KB stack
+	task_b->tss.eip = (int) &task_b_main;
+	task_b->tss.es = 1 * 8;
+	task_b->tss.cs = 2 * 8; // Same segment as the kernal
+	task_b->tss.ss = 1 * 8;
+	task_b->tss.ds = 1 * 8;
+	task_b->tss.fs = 1 * 8;
+	task_b->tss.gs = 1 * 8;
+	task_run(task_b, 1, 0); // Level 1, Priority 1 (keep default)
 
 	while(1) {
-		count++;
-
-//		draw_rect(buf_window1, 150, COL8_GRAY, 25, 25, 125, 40);
-//		sprintf(buf,"%d%09d",tmr->time_high,tmr->time_low);
-//		draw_string(buf_window1, 150, COL8_BLACK, 25, 25, buf);
-//		sheet_refresh(sht_window1, 25, 25, 125, 41, 0);
+		if((fifo8_status(&timerfifo)|fifo8_status(&mousefifo)|fifo8_status(&keyfifo)) == 0){
+			task_sleep(task_kernal);
+		}
 		if(fifo8_status(&timerfifo)){
 			data = fifo8_get(&timerfifo);
 			if(data == 1){
-				start_timing(1, 100);
-				draw_rect(buf_back, binfo->xsize, COL8_WHITE, 0, 64, 7, 79);
+				start_timing(1, 50);
+				if(input_signal)
+					draw_rect(buf_back, binfo->xsize, COL8_D_CYAN, 0, 64, 7, 79);
+				else
+					draw_rect(buf_back, binfo->xsize, COL8_WHITE, 0, 64, 7, 79);
+				input_signal = !input_signal;
 				sheet_refresh(sht_back, 0, 64, 8, 80, 0);
 				sprintf(buf,"Memory sbrk: 0x%x",mm_check());
 				draw_rect(buf_back, binfo->xsize, COL8_D_CYAN, 0, 32, binfo->xsize, 47);
 				draw_string(buf_back, binfo->xsize, COL8_GREEN, 0, 32,buf);
 				sheet_refresh(sht_back, 0, 32, binfo->xsize, 48, 0);
-			}else if(data == 2){
-				start_timing(2, 100);
-				draw_rect(buf_back, binfo->xsize, COL8_D_CYAN, 0, 64, 7, 79);
-				sheet_refresh(sht_back, 0, 64, 8, 80, 0);
-				sprintf(buf,"Memory sbrk: 0x%x",mm_check());
-				draw_rect(buf_back, binfo->xsize, COL8_D_CYAN, 0, 32, binfo->xsize, 47);
-				draw_string(buf_back, binfo->xsize, COL8_GREEN, 0, 32,buf);
-				sheet_refresh(sht_back, 0, 32, binfo->xsize, 48, 0);
-			}else if(data == 3){
-				sprintf(buf,"%d",count);
-				sys_error(buf);
 			}
 		}
 		
 		
 		if(fifo8_status(&keyfifo)){
 			data = fifo8_get(&keyfifo);
-			sprintf(buf,"INT 21 (IRQ-1) : PS/2 keyboard [%x]",data);
+			char ch[2] = {0};
+			ch[0] = key_to_char(data);
+			sprintf(buf,"INT 21 (IRQ-1) : PS/2 keyboard [%x, %s]",data,ch);
 			draw_rect(buf_back, binfo->xsize, COL8_BLACK, 0, 0, binfo->xsize, 15);
 			draw_string(buf_back, binfo->xsize, COL8_WHITE, 0, 0, buf);
 			sheet_refresh(sht_back, 0, 0, binfo->xsize, 16, 0);
+			if(ch[0] == 'A'){
+				task_sleep(task_b);
+			}
+			if(ch[0] == 'B'){
+				task_run(task_b, -1, 0);
+			}
 		}
 
 		if(fifo8_status(&mousefifo)){
@@ -165,8 +200,10 @@ void HariMain(void)
 				}
 				sheet_slide(sht_mouse, mx, my);
 				draw_rect(buf_back, binfo->xsize, COL8_RED, 0, 48, binfo->xsize, 63);
-				if(mdec.btn == 1)
+				if(mdec.btn & 0x01){
 					sprintf(buf,"Decode(%d,%d,L)",mx,my);
+					sheet_slide(sht_window1, mx - 80, my - 8);
+				}
 				else if(mdec.btn == 2)
 					sprintf(buf,"Decode(%d,%d,R)",mx,my);
 				else if(mdec.btn == 4)
@@ -206,7 +243,7 @@ void sys_debug(char * debug_info)
 }
 
 /* Draw a window */
-void make_window(unsigned char *buf, int xsize, int ysize, char *title)
+void make_window(unsigned char *buf, int xsize, int ysize, char *title, char act)
 {
 	static char closebtn[14][14] = {
 		"OOOOOOOOOOOOO@",
@@ -233,7 +270,10 @@ void make_window(unsigned char *buf, int xsize, int ysize, char *title)
 	draw_rect(buf, xsize, COL8_D_GRAY, xsize - 2, 1,         xsize - 2, ysize - 2);
 	draw_rect(buf, xsize, COL8_BLACK, xsize - 1, 0,         xsize - 1, ysize - 1);
 	draw_rect(buf, xsize, COL8_GRAY, 2,         2,         xsize - 3, ysize - 3);
-	draw_rect(buf, xsize, COL8_D_BLUE, 3,         3,         xsize - 4, 20       );
+	if (act)
+		draw_rect(buf, xsize, COL8_D_BLUE, 3,         3,         xsize - 4, 20       );
+	else
+		draw_rect(buf, xsize, COL8_D_GRAY, 3,         3,         xsize - 4, 20       );
 	draw_rect(buf, xsize, COL8_D_GRAY, 1,         ysize - 2, xsize - 2, ysize - 2);
 	draw_rect(buf, xsize, COL8_BLACK, 0,         ysize - 1, xsize - 1, ysize - 1);
 	draw_string(buf, xsize, COL8_WHITE, 8, 4, title);

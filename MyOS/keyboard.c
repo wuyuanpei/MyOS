@@ -31,3 +31,19 @@ void inthandler21(int *esp)
 	data = io_in8(PORT_KEYDAT);
 	fifo8_put(&keyfifo,data);
 }
+
+/* Turn a key on the keyboard to a character */
+char key_to_char(unsigned char key)
+{
+	static char keytable[0x54] = {
+		0, 0, '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=', 0, 0,
+		'Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P', '[', ']', 0, 0, 'A', 'S',
+		'D', 'F', 'G', 'H', 'J', 'K', 'L', ';', '\'', '`', 0, '\\', 'Z', 'X', 'C', 'V',
+		'B', 'N', 'M', ',', '.', '/', 0, '*', 0, ' ', 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, '7', '8', '9', '-', '4', '5', '6', '+', '1',
+		'2', '3', '0', '.'
+	};
+	if(key >= 0x54)
+		return 0;
+	return keytable[key];
+}
