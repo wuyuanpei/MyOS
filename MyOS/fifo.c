@@ -4,12 +4,11 @@
 
 extern struct TASK *task_kernal;
 
-void fifo8_init(struct FIFO8 *fifo, int size, unsigned char *buf)
+void fifo_init(struct FIFO *fifo)
 /* Initialize FIFO */
 {
-	fifo->size = size;
-	fifo->buf = buf;
-	fifo->free = size; /* buffer size */
+	fifo->size = BUF_LENGTH;
+	fifo->free = BUF_LENGTH; /* buffer size */
 	fifo->flags = 0;
 	fifo->p = 0; /* next write position */
 	fifo->q = 0; /* next read position */
@@ -17,7 +16,7 @@ void fifo8_init(struct FIFO8 *fifo, int size, unsigned char *buf)
 }
 
 // This method is always called by inthandler
-int fifo8_put(struct FIFO8 *fifo, unsigned char data)
+int fifo_put(struct FIFO *fifo, unsigned int data)
 /* put data in FIFO */
 {
 	if (fifo->free == 0) {
@@ -31,19 +30,18 @@ int fifo8_put(struct FIFO8 *fifo, unsigned char data)
 		fifo->p = 0;
 	}
 	fifo->free--;
-	task_run(task_kernal, -1, 0);
 	return 0;
 }
 
 // This method is always called by system, thus INT safe
-unsigned char fifo8_get(struct FIFO8 *fifo)
+unsigned int fifo_get(struct FIFO *fifo)
 /* get data from FIFO */
 {
-	unsigned char data;
+	unsigned int data;
 	int eflags;
 	if (fifo->free == fifo->size) {
-		/* FIFO is empty, return -1 */
-		return -1;
+		/* FIFO is empty, return 0xffffffff */
+		return 0xffffffff;
 	}
 	eflags = io_load_eflags();	/* Record current INT state */
 	io_cli();
@@ -58,7 +56,7 @@ unsigned char fifo8_get(struct FIFO8 *fifo)
 }
 
 /* return the current length of the circular queue */
-int fifo8_status(struct FIFO8 *fifo)
+int fifo_status(struct FIFO *fifo)
 {
 	return fifo->size - fifo->free;
 }

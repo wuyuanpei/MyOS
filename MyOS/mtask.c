@@ -1,3 +1,19 @@
+/**
+关于多任务系统，我们将任务们划分为多个等级
+每个任务有自己的等级(level)和运行时间(priority)
+每当一个时间中断来临，如果正好一个任务的运行时间结束
+我们的多任务系统会先找到此刻含有任务的最高等级
+然后在这个等级中执行任务
+如果这个等级和这个正好结束的任务是一个等级
+将会运行这个等级的下一个任务
+如果该等级只有只有这一个任务 将会重新运行这个任务
+
+因此，如果一个高等级的任务不结束，低等级的任务永远无法运行
+和正在运行的任务同等级的任务将会依次运行
+
+当task_run方法改变了一个任务的等级，或在某个等级加入了一个新任务
+下一次切换任务时将重新检索等级
+*/
 #include "bootpack.h"
 
 char mtask_on = 0;
@@ -22,7 +38,7 @@ static void task_add(struct TASK *task)
 	}
 }
 
-/* Remove a task from the corresponding level*/
+/* Remove a task from the corresponding level */
 static void task_remove(struct TASK *task)
 {
 	int i;
@@ -70,12 +86,13 @@ static void task_idle(void)
 	while(1)
 		io_hlt();
 }
+
 struct TASK *task_init(void)
 {
 	int i;
 	struct TASK *task, *idle;
 	struct SEGMENT_DESCRIPTOR *gdt = (struct SEGMENT_DESCRIPTOR *) ADR_GDT;
-	taskctl = (struct TASKCTL *) mm_malloc(sizeof (struct TASKCTL));
+	taskctl = (struct TASKCTL *) mm_malloc(sizeof (struct TASKCTL)); // 11d2d8 B
 	// Initialize tasks0 array and GDT
 	for (i = 0; i < MAX_TASKS; i++) {
 		taskctl->tasks0[i].priority = 1; // Default priority for all tasks
@@ -119,6 +136,7 @@ struct TASK *task_alloc(void)
 	for (i = 0; i < MAX_TASKS; i++) {
 		if (taskctl->tasks0[i].flags == TASK_UNUSED) {
 			task = & taskctl->tasks0[i];
+			fifo_init(&task->fifo); /* Init the fifo of this task */
 			task->flags = TASK_USED; /* The task is used */
 			task->tss.eflags = 0x00000202; /* IF = 1; allow interrupt */
 			task->tss.eax = 0; /* Set all registers to 0 first */
@@ -167,7 +185,7 @@ static int tmr_count = 0;
 
 void task_switch(void)
 {	
-	struct TASKLEVEL *tl = &taskctl->level[taskctl->now_lv];
+	struct TASKLEVEL *tl = & taskctl->level[taskctl->now_lv];
 	struct TASK *new_task, *now_task = tl->tasks[tl->now];
 	tmr_count++;
 	// The task has to run for the defined time 

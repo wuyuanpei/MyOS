@@ -2,14 +2,13 @@
 #include "bootpack.h"
 #include <stdio.h>
 
-extern struct FIFO8 keyfifo;
-extern struct FIFO8 mousefifo;
-extern struct FIFO8 timerfifo;
-
 extern char mtask_on;
 
 // The kernal task
 struct TASK *task_kernal;
+
+// The focused task
+struct TASK *task_focused;
 
 void task_b_main(void){
 	char buf[20]; // string buffer
@@ -18,24 +17,83 @@ void task_b_main(void){
 	unsigned char *buf_window = mm_malloc(150*50); // window size
 	sheet_setbuf(sht_window, buf_window, 150, 50, 0xff); // 0xff for col_inv
 	make_window(buf_window, 150, 50, "System Timer", 0);
-	sheet_updown(sht_window, 2);
-	sheet_slide(sht_window, 155, 70);
+	sheet_updown(sht_window, 1);
+	sheet_slide(sht_window, 160, 70);
+	start_timing(1,1);
 	while(1){
 		draw_rect(buf_window, 150, COL8_GRAY, 25, 25, 125, 40);
 		sprintf(buf,"%02d%09d",tmr->time_high,tmr->time_low);
 		draw_string(buf_window, 150, COL8_BLACK, 25, 25, buf);
 		sheet_refresh(sht_window, 25, 25, 125, 41, 0);
-		//task_sleep(task_now());
+		if(fifo_status(& task_now()->fifo) == 0)
+			task_sleep(task_now());
+		else{
+			fifo_get(& task_now()->fifo);
+			start_timing(1,1);
+		}
+	}
+}
+
+void task_console_main(void){
+	int x = -1, y = 0, show_cursor = 1, xc = 0, yc = 0;
+	struct SHEET *sht_window = sheet_alloc();
+	unsigned char *buf_window = mm_malloc(150*105); // window size
+	sheet_setbuf(sht_window, buf_window, 150, 105, 0xff); // 0xff for col_inv
+	make_window(buf_window, 150, 105, "Command", 1);
+	draw_rect(buf_window, 150, COL8_BLACK, 3, 22, 146, 101);
+	sheet_updown(sht_window, 1);
+	sheet_slide(sht_window, 5, 70);
+	start_timing(1,50);
+	while(1){
+		if(fifo_status(& task_now()->fifo) == 0)
+			task_sleep(task_now());
+		unsigned int data = fifo_get(& task_now()->fifo);
+		if(data == TIMER_OFFSET + 1){
+			start_timing(1,50);
+			if(show_cursor){
+				draw_rect(buf_window, 150, COL8_GREEN, 3 + 8 * xc, 22 + 16 * yc, 10 + 8 * xc, 37 + 16 * yc);
+				sheet_refresh(sht_window, 3 + 8 * xc, 22 + 16 * yc, 11 + 8 * xc, 38 + 16 * yc, 0);
+			}else{
+				draw_rect(buf_window, 150, COL8_BLACK, 3 + 8 * xc, 22 + 16 * yc, 10 + 8 * xc, 37 + 16 * yc);
+				sheet_refresh(sht_window, 3 + 8 * xc, 22 + 16 * yc, 11 + 8 * xc, 38 + 16 * yc, 0);
+			}
+			show_cursor ^= 1;
+			continue;
+		}
+		data = key_to_char(data);
+		if(data == 0) 
+			continue;
+		x++;
+		xc++;
+		if(x == 18){
+			x = 0;
+			y++;
+			if(y==5){
+				y = 0;
+				draw_rect(buf_window, 150, COL8_BLACK, 3, 22, 146, 101);
+				sheet_refresh(sht_window, 3, 22, 147, 102, 0);
+			}
+		}
+		if(xc == 18){
+			xc = 0;
+			yc++;
+			if(yc==5){
+				yc = 0;
+			}
+		}
+		draw_rect(buf_window, 150, COL8_BLACK, 3 + 8 * x, 22 + 16 * y, 10 + 8 * x, 37 + 16 * y);
+		draw_char(buf_window, 150, COL8_GREEN, 3 + 8 * x, 22 + 16 * y, hankaku + data * 16);
+		sheet_refresh(sht_window, 3 + 8 * x, 22 + 16 * y, 11 + 8 * x, 38 + 16 * y, 0);
 	}
 }
 
 /* Entrance of the system addr[2*8:0x0000001b] after SPL */
 void HariMain(void)
 {
-	// string buffer, FIFO for keyboard and mouse
-	char buf[40], keybuf[KEY_BUF_LEN], mousebuf[MOUSE_BUF_LEN], timerbuf[TIMER_BUF_LEN];
+	// string buffer
+	char buf[40];
 	// temporary variable (for FIFO data)
-	unsigned char data;
+	unsigned int data;
 	// temporary variable (for memory test)
 	unsigned int mem_end;
 	// Address for BOOTINFO
@@ -47,8 +105,8 @@ void HariMain(void)
 	// Mouse decoder
 	struct MOUSE_DEC mdec;
 	// Sheets
-	struct SHEET *sht_back, *sht_mouse, *sht_window1;
-	unsigned char *buf_back, *buf_mouse, *buf_window1; // free memory address for sheet buffer
+	struct SHEET *sht_back, *sht_mouse;
+	unsigned char *buf_back, *buf_mouse; // free memory address for sheet buffer
 	// Mouse location (for display)
 	int mx, my;
 	// Input Signal
@@ -70,10 +128,6 @@ void HariMain(void)
 	io_sti(); // Setup finished, open INT
 	init_keyboard();
 	enable_mouse(&mdec);
-	
-	fifo8_init(&keyfifo,KEY_BUF_LEN,keybuf);
-	fifo8_init(&mousefifo,MOUSE_BUF_LEN,mousebuf);
-	fifo8_init(&timerfifo,TIMER_BUF_LEN,timerbuf);
 
 	init_pit();
 	io_out8(PIC0_IMR, 0xf8); /* open PIC0 (timer), PIC1, and keyboard INT (11111000) */
@@ -84,17 +138,13 @@ void HariMain(void)
 	shtctl_init(binfo->vram, binfo->xsize, binfo->ysize);
 	sht_back = sheet_alloc();
 	sht_mouse = sheet_alloc();
-	sht_window1 = sheet_alloc();
 
 	buf_back = mm_malloc(binfo->xsize * binfo-> ysize);
 	buf_mouse = mm_malloc(256); // mouse cursor is 16 * 16
-	buf_window1 = mm_malloc(150*75); // window size
 
 	sheet_setbuf(sht_back, buf_back, binfo->xsize, binfo->ysize, 0xff); // 0xff for col_inv
 	sheet_setbuf(sht_mouse, buf_mouse, 16, 16, 0xff); // 0xff for col_inv
-	sheet_setbuf(sht_window1, buf_window1, 150, 75, 0xff); // 0xff for col_inv
 	
-	make_window(buf_window1, 150, 75, "System Timer", 1);
 	init_screen(buf_back, binfo->xsize, binfo->ysize);
 	init_mouse_cursor(buf_mouse,0xff); // background is transparent
 	
@@ -103,29 +153,20 @@ void HariMain(void)
 	
 	// Set priority
 	sheet_updown(sht_back, 0);
-	sheet_updown(sht_window1, 1);
-	sheet_updown(sht_mouse, 3);
+	sheet_updown(sht_mouse, 1);
 
 	sheet_slide(sht_mouse, mx, my);
 	sheet_slide(sht_back, 0, 0);
-	sheet_slide(sht_window1, 85, 64);
 	
 	draw_string(buf_back, binfo->xsize, COL8_YELLOW, 0, 16, "MyOS 1.0 ----Richard");
-	sprintf(buf,"Memory sbrk: 0x%x",mm_check());
-	draw_string(buf_back, binfo->xsize, COL8_GREEN, 0, 32,buf);
 	sprintf(buf,"vram: %x",binfo->vram);
 	draw_rect(buf_back, binfo->xsize, COL8_BLACK, 0, 0, binfo->xsize, 16);
 	draw_string(buf_back, binfo->xsize, COL8_WHITE, 0, 0, buf);
-	draw_rect(buf_back, binfo->xsize, COL8_RED, 0, 48, binfo->xsize, 63);
-	sprintf(buf,"Decode(%d,%d,N)",mx,my);
-	draw_string(buf_back, binfo->xsize, COL8_WHITE, 0, 48, buf);
 	sheet_refresh(sht_back, 0, 0, binfo->xsize, binfo->ysize, 0);
-
-	// System timing
-	start_timing(1, 50);
 	
 	// Task
 	task_kernal = task_init();
+
 	struct TASK *task_b;
 	task_b = task_alloc();
 	task_b->tss.esp = (unsigned int)mm_malloc(64 * 1024) + 64 * 1024; // 64 KB stack
@@ -138,46 +179,40 @@ void HariMain(void)
 	task_b->tss.gs = 1 * 8;
 	task_run(task_b, 1, 0); // Level 1, Priority 1 (keep default)
 
+	struct TASK *task_console;
+	task_console = task_alloc();
+	task_focused = task_console;
+	task_console->tss.esp = (unsigned int)mm_malloc(64 * 1024) + 64 * 1024; // 64 KB stack
+	task_console->tss.eip = (int) &task_console_main;
+	task_console->tss.es = 1 * 8;
+	task_console->tss.cs = 2 * 8; // Same segment as the kernal
+	task_console->tss.ss = 1 * 8;
+	task_console->tss.ds = 1 * 8;
+	task_console->tss.fs = 1 * 8;
+	task_console->tss.gs = 1 * 8;
+	task_run(task_console, 1, 0); // Level 1, Priority 1 (keep default)
+
 	while(1) {
-		if((fifo8_status(&timerfifo)|fifo8_status(&mousefifo)|fifo8_status(&keyfifo)) == 0){
+		if(fifo_status(&task_kernal->fifo) == 0){
 			task_sleep(task_kernal);
 		}
-		if(fifo8_status(&timerfifo)){
-			data = fifo8_get(&timerfifo);
-			if(data == 1){
-				start_timing(1, 50);
-				if(input_signal)
-					draw_rect(buf_back, binfo->xsize, COL8_D_CYAN, 0, 64, 7, 79);
-				else
-					draw_rect(buf_back, binfo->xsize, COL8_WHITE, 0, 64, 7, 79);
-				input_signal = !input_signal;
-				sheet_refresh(sht_back, 0, 64, 8, 80, 0);
-				sprintf(buf,"Memory sbrk: 0x%x",mm_check());
-				draw_rect(buf_back, binfo->xsize, COL8_D_CYAN, 0, 32, binfo->xsize, 47);
-				draw_string(buf_back, binfo->xsize, COL8_GREEN, 0, 32,buf);
-				sheet_refresh(sht_back, 0, 32, binfo->xsize, 48, 0);
-			}
-		}
+
+		data = fifo_get(&task_kernal->fifo);
 		
-		
-		if(fifo8_status(&keyfifo)){
-			data = fifo8_get(&keyfifo);
+		// Keyboard
+		if(data < 256){ // Keyboard input will forward call the focused task
+			fifo_put(&task_focused->fifo, data);
+			task_run(task_focused, -1, 0);
 			char ch[2] = {0};
 			ch[0] = key_to_char(data);
 			sprintf(buf,"INT 21 (IRQ-1) : PS/2 keyboard [%x, %s]",data,ch);
 			draw_rect(buf_back, binfo->xsize, COL8_BLACK, 0, 0, binfo->xsize, 15);
 			draw_string(buf_back, binfo->xsize, COL8_WHITE, 0, 0, buf);
 			sheet_refresh(sht_back, 0, 0, binfo->xsize, 16, 0);
-			if(ch[0] == 'A'){
-				task_sleep(task_b);
-			}
-			if(ch[0] == 'B'){
-				task_run(task_b, -1, 0);
-			}
 		}
-
-		if(fifo8_status(&mousefifo)){
-			data = fifo8_get(&mousefifo);
+		
+		// Mouse
+		else{
 			if(mouse_decode(&mdec,data)){
 				sprintf(buf,"INT 2c (IRQ-12) : PS/2 mouse [%x,%x,%x]", mdec.buf[0], mdec.buf[1], mdec.buf[2]);
 				draw_rect(buf_back, binfo->xsize, COL8_BLACK, 0, 0, binfo->xsize, 15);
@@ -199,19 +234,6 @@ void HariMain(void)
 					my = binfo->ysize - 1;
 				}
 				sheet_slide(sht_mouse, mx, my);
-				draw_rect(buf_back, binfo->xsize, COL8_RED, 0, 48, binfo->xsize, 63);
-				if(mdec.btn & 0x01){
-					sprintf(buf,"Decode(%d,%d,L)",mx,my);
-					sheet_slide(sht_window1, mx - 80, my - 8);
-				}
-				else if(mdec.btn == 2)
-					sprintf(buf,"Decode(%d,%d,R)",mx,my);
-				else if(mdec.btn == 4)
-					sprintf(buf,"Decode(%d,%d,M)",mx,my);
-				else
-					sprintf(buf,"Decode(%d,%d,N)",mx,my);
-				draw_string(buf_back, binfo->xsize, COL8_WHITE, 0, 48, buf);
-				sheet_refresh(sht_back, 0, 48, binfo->xsize, 64, 0);
 			}
 		}
 	}

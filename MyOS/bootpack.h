@@ -114,14 +114,19 @@ void init_pic(void);
 #define PIC1_ICW4		0x00a1
 
 /* fifo.c */
-struct FIFO8 {
-	unsigned char *buf;
+// Every task has a FIFO
+#define BUF_LENGTH			256		// Buffer Size
+#define KEYBOARD_OFFSET		0
+#define MOUSE_OFFSET		256
+#define TIMER_OFFSET		512
+struct FIFO {
+	unsigned int buf[BUF_LENGTH];
 	int p, q, size, free, flags;
 };
-void fifo8_init(struct FIFO8 *fifo, int size, unsigned char *buf);
-int fifo8_put(struct FIFO8 *fifo, unsigned char data);
-unsigned char fifo8_get(struct FIFO8 *fifo);
-int fifo8_status(struct FIFO8 *fifo);
+void fifo_init(struct FIFO *fifo);
+int fifo_put(struct FIFO *fifo, unsigned int data);
+unsigned int fifo_get(struct FIFO *fifo);
+int fifo_status(struct FIFO *fifo);
 #define FLAGS_OVERRUN		0x0001
 
 /* bootpack.c */
@@ -144,7 +149,6 @@ void enable_mouse(struct MOUSE_DEC *mdec);
 int mouse_decode(struct MOUSE_DEC *mdec, unsigned char dat);
 #define KEYCMD_SENDTO_MOUSE		0xd4
 #define MOUSECMD_ENABLE			0xf4
-#define MOUSE_BUF_LEN			128		// FIFO Buffer Length
 
 /* keyboard.c */
 void inthandler21(int *esp);
@@ -159,7 +163,6 @@ char key_to_char(unsigned char key);
 #define KEYSTA_SEND_NOTREADY	0x02
 #define KEYCMD_WRITE_MODE		0x60
 #define KBC_MODE				0x47
-#define KEY_BUF_LEN				32		// FIFO Buffer Length
 
 /* memory.c */
 #define EFLAGS_AC_BIT			0x00040000
@@ -208,34 +211,6 @@ void sheet_refresh(struct SHEET *sht, int bx0, int by0, int bx1, int by1, int ch
 void sheet_slide(struct SHEET *sht, int vx0, int vy0);
 void sheet_free(struct SHEET *sht);
 
-/* timer.c */
-#define PIT_CTRL		0x0043
-#define PIT_CNT0		0x0040
-/* System Timer: can store 0xffffffffffffffff units of 0.01 seconds */
-#define SYS_TMR_ADR		0x0026A414
-struct SYS_TMR {
-	unsigned int time_high, time_low;
-};
-#define TIMER_BUF_LEN			32		// FIFO Buffer Length
-struct USR_TMR {
-	unsigned int start_high, start_low;
-	unsigned int end_high, end_low;
-};
-struct TMRCTL
-{
-	struct TMRCTL *next;
-	struct USR_TMR node_data;
-	unsigned char handler;
-};
-void init_pit(void);
-void inthandler20(int *esp);
-// record the current time and record the expected ending time
-void start_usr_timing(struct USR_TMR *usr_tmr, unsigned int duration);
-// test whether the usr_tmr passes the expected ending time, if so return 1
-int test_usr_timing(struct USR_TMR *usr_tmr);
-// start timing using a handler. When timing finishes, the handler will be put into FIFO
-void start_timing(unsigned char handler, unsigned int duration);
-
 /* mtask.c */
 #define MAX_TASKS		1000	/* Maximum number of tasks */
 #define TASK_GDT0		3		/* First TSS entry in GDT */
@@ -257,6 +232,7 @@ struct TASK {
 	/* priority: the priority of the task (10 [0.1s] ~ 1 [0.01s])*/
 	/* level: the level of the task */
 	int sel, flags, priority, level;
+	struct FIFO fifo;
 	struct TSS32 tss;
 };
 struct TASKLEVEL {
@@ -266,7 +242,7 @@ struct TASKLEVEL {
 };
 struct TASKCTL {
 	int now_lv; /* The level running*/
-	char lv_change; /* Whether to change a level when context switching */
+	char lv_change; /* Whether to change a level during context switching */
 	struct TASKLEVEL level[MAX_TASKLEVELS];
 	struct TASK tasks0[MAX_TASKS];
 };
@@ -276,3 +252,27 @@ void task_run(struct TASK *task, int level, int priority); // Run a task, tag fl
 void task_switch(void); // Switch to the next task (always called by inthandler20)
 void task_sleep(struct TASK *task); // Sleep a task, tag flag TASK_USED, drop it from the list
 struct TASK *task_now(void); // Return the current running task
+
+/* timer.c */
+#define PIT_CTRL		0x0043
+#define PIT_CNT0		0x0040
+/* System Timer: can store 0xffffffffffffffff units of 0.01 seconds */
+#define SYS_TMR_ADR		0x0026A414
+struct SYS_TMR {
+	unsigned int time_high, time_low;
+};
+struct USR_TMR {
+	unsigned int start_high, start_low;
+	unsigned int end_high, end_low;
+};
+struct TMRCTL
+{
+	struct TMRCTL *next;
+	struct USR_TMR node_data;
+	struct TASK *task;
+	unsigned char handler;
+};
+void init_pit(void);
+void inthandler20(int *esp);
+// start timing using a handler. When timing finishes, the handler will be put into FIFO
+void start_timing(unsigned char handler, unsigned int duration);

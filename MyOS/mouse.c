@@ -1,6 +1,6 @@
 #include "bootpack.h"
 
-struct FIFO8 mousefifo;
+extern struct TASK *task_kernal;
 
 /* Initialize Mouse */
 void enable_mouse(struct MOUSE_DEC *mdec)
@@ -67,5 +67,6 @@ void inthandler2c(int *esp)
 	io_out8(PIC1_OCW2, 0x64);	/* Inform slave PIC that IRQ-12 finished */
 	io_out8(PIC0_OCW2, 0x62);	/* Inform master PIC that IRQ-02 finished */
 	data = io_in8(PORT_KEYDAT);
-	fifo8_put(&mousefifo,data);
+	fifo_put(&task_kernal->fifo, ((int)data) + MOUSE_OFFSET);
+	task_run(task_kernal, -1, 0);
 }
