@@ -1,3 +1,4 @@
+
 #include "bootpack.h"
 
 extern struct TASK *task_kernal;
@@ -14,6 +15,27 @@ void wait_KBC_sendready(void)
 			return;
 		}
 	}
+}
+
+static char sendback_ack;
+
+/* Set the LEDs on the keyboard*/
+void set_kb_led(void){
+reset:
+	sendback_ack = 0;
+	wait_KBC_sendready();
+	io_out8(PORT_KEYDAT, KEYCMD_LED);
+	while(sendback_ack == 0){
+		io_hlt();
+	}
+	if(sendback_ack == -1) goto reset;
+	sendback_ack = 0;
+	wait_KBC_sendready();
+	io_out8(PORT_KEYDAT, key_leds);
+	while(sendback_ack == 0){
+		io_hlt();
+	}
+	if(sendback_ack == -1) goto reset;
 }
 
 /* Initialize Keyboard Controller */
@@ -37,6 +59,11 @@ void inthandler21(int *esp)
 	unsigned char data;
 	io_out8(PIC0_OCW2, 0x61);	/* Inform PIC that IRQ-01 finished */
 	data = io_in8(PORT_KEYDAT);
+	if(data == 0xfa){
+		sendback_ack = 1;
+		return;
+	}
+	sendback_ack = -1;
 	// Adjust shift
 	if((data == 0x2A) || (data == 0x36)){
 		shift = 1;
@@ -81,7 +108,7 @@ char key_to_char(unsigned char key)
 	// If CAPSLK is on
 	if((key_leds & 4)){
 		// If result is English character, change the case
-		if(result>='a' && result<='z' || result>='A' && result<='Z'){
+		if((result>='a' && result<='z') || (result>='A' && result<='Z')){
 			result ^= 0x20;
 		}
 	}

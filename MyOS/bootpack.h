@@ -154,6 +154,7 @@ int mouse_decode(struct MOUSE_DEC *mdec, unsigned char dat);
 void inthandler21(int *esp);
 void wait_KBC_sendready(void);
 void init_keyboard(void);
+void set_kb_led(void);
 /* Turn a key on the keyboard to a character */
 char key_to_char(unsigned char key);
 /* Keyboard controller */
@@ -163,6 +164,7 @@ char key_to_char(unsigned char key);
 #define KEYSTA_SEND_NOTREADY	0x02
 #define KEYCMD_WRITE_MODE		0x60
 #define KBC_MODE				0x47
+#define KEYCMD_LED				0xed
 
 /* memory.c */
 #define EFLAGS_AC_BIT			0x00040000

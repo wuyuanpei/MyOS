@@ -115,7 +115,7 @@ struct TASK *task_init(void)
 	load_tr(task->sel);	// Set task register
 
 	idle = task_alloc();
-	idle->tss.esp = mm_malloc(64) + 64; // 64 B stack
+	idle->tss.esp = ((unsigned int)mm_malloc(64)) + 64; // 64 B stack
 	idle->tss.eip = (int) &task_idle;
 	idle->tss.es = 1 * 8;
 	idle->tss.cs = 2 * 8; // The same segment as the kernal
