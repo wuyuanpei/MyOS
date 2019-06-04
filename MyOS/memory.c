@@ -75,9 +75,29 @@ static unsigned int* sbrk = 0;
 static const unsigned int* end_memory = 0;
 
 /* 
- * Memory checker 
+ * Return the end border 
+ */
+unsigned int mm_total(void){
+    return (unsigned int)end_memory;
+}
+
+/* 
+ * Memory the amount of free memory 
  */
 unsigned int mm_check(void){
+    unsigned int res = (unsigned int)end_memory - (unsigned int)sbrk;
+	unsigned int * tmp = pro;
+	while((*tmp) != ENDL){
+		tmp = (unsigned int *) (*tmp);
+		res += GET_SIZE(tmp - 1);
+	}
+	return res;
+}
+
+/* 
+ * Return sbrk 
+ */
+unsigned int mm_sbrk(void){
     return (unsigned int)sbrk;
 }
 

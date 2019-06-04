@@ -8,6 +8,7 @@ struct BOOTINFO{ /* 0x0ff0 ~ 0x0fff*/
 	char *vram;
 };
 #define ADR_BOOTINFO 0x00000ff0
+#define ADR_DISK_IMG 0x00100000
 
 /** dsctbl.c */
 /* GDT content (8 Bytes) */
@@ -174,6 +175,8 @@ char key_to_char(unsigned char key);
 #define MIN_MEMORY_REQUIRED		0x00A00000 // At least 10 MB memory for the OS
 unsigned int memtest(unsigned int start, unsigned int end);
 unsigned int mm_check(void);
+unsigned int mm_sbrk(void);
+unsigned int mm_total(void);
 void mm_init(unsigned int *start, unsigned int *end);
 void *mm_malloc(unsigned int size);
 void mm_free(void *bptr);
@@ -278,3 +281,20 @@ void init_pit(void);
 void inthandler20(int *esp);
 // start timing using a handler. When timing finishes, the handler will be put into FIFO
 void start_timing(unsigned char handler, unsigned int duration);
+
+/* console.c */
+#define MAX_CMD_BUF		100		// 99 characters + '\0'
+#define MAX_ARG_BUF		33		// 1 + 32 args
+#define BUILDIN_CMD_NUM 10
+void task_console_main(void);
+
+/* file.c */
+// File information standard in FAT
+struct FILEINFO {
+	unsigned char name[8], ext[3], type;
+	char reserve[10];
+	unsigned short time, date, clustno;
+	unsigned int size;
+};
+
+

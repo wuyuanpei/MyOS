@@ -3,7 +3,7 @@
 
 CYLS	EQU		10				; Load CYLS cylinders into memory
 ERRN	EQU		50				; Maximum number of times to load while
-								; a section causes error
+							; a section causes error
 		ORG		0x7c00			; The standard loading address for ipl
 
 ; Standard FAT12 format floppy code

@@ -1,6 +1,6 @@
 OBJS_BOOTPACK = bootpack.obj naskfunc.obj hankaku.obj graphic.obj dsctbl.obj \
 		int.obj fifo.obj keyboard.obj mouse.obj memory.obj sheet.obj \
-		timer.obj mtask.obj
+		timer.obj mtask.obj console.obj file.obj
 
 TOOLPATH = ../z_tools/
 INCPATH  = ../z_tools/haribote/
@@ -53,6 +53,8 @@ haribote.img : ipl10.bin haribote.sys Makefile
 	$(EDIMG)   imgin:../z_tools/fdimg0at.tek \
 		wbinimg src:ipl10.bin len:512 from:0 to:0 \
 		copy from:haribote.sys to:@: \
+		copy from:file.c to:@: \
+		copy from:cmd.bat to:@: \
 		imgout:haribote.img
 
 # 其他指令

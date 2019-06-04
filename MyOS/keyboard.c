@@ -10,7 +10,7 @@ static int key_leds = -1; // LOCKS state
 /* Wait for Keyboard Controller to receive signal */
 void wait_KBC_sendready(void)
 {
-	for (;;) {
+	while(1) {
 		if ((io_in8(PORT_KEYSTA) & KEYSTA_SEND_NOTREADY) == 0) {
 			return;
 		}
@@ -59,7 +59,7 @@ void inthandler21(int *esp)
 	unsigned char data;
 	io_out8(PIC0_OCW2, 0x61);	/* Inform PIC that IRQ-01 finished */
 	data = io_in8(PORT_KEYDAT);
-	if(data == 0xfa){
+	if(data == 0xfa){			/* Status for set_kb_led */
 		sendback_ack = 1;
 		return;
 	}
@@ -75,25 +75,27 @@ void inthandler21(int *esp)
 	if(data == 0xBA){
 		key_leds ^= 4;
 	}
-	fifo_put(&task_kernal->fifo,((int)data) + KEYBOARD_OFFSET);
+	fifo_put(& task_kernal->fifo,((int)data) + KEYBOARD_OFFSET);
 	task_run(task_kernal, -1, 0);
 }
 
-/* Turn a key on the keyboard to a character */
+/* Turn a key on the keyboard to a character.
+ * If a key cannot turn into a character, return 0
+ */
 char key_to_char(unsigned char key)
 {
 	char result;
 	static char keytable1[0x54] = {
-		0, 0, '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=', 0, 0,
-		'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[', ']', 0, 0, 'a', 's',
+		0, 0, '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=', 8, 0,
+		'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[', ']', 10, 0, 'a', 's',
 		'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', '\'', '`', 0, '\\', 'z', 'x', 'c', 'v',
 		'b', 'n', 'm', ',', '.', '/', 0, '*', 0, ' ', 0, 0, 0, 0, 0, 0,
 		0, 0, 0, 0, 0, 0, 0, '7', '8', '9', '-', '4', '5', '6', '+', '1',
 		'2', '3', '0', '.'
 	};
 	static char keytable2[0x54] = {
-		0, 0, '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '_', '+', 0, 0,
-		'Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P', '{', '}', 0, 0, 'A', 'S',
+		0, 0, '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '_', '+', 8, 0,
+		'Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P', '{', '}', 10, 0, 'A', 'S',
 		'D', 'F', 'G', 'H', 'J', 'K', 'L', ':', '\"', '~', 0, '|', 'Z', 'X', 'C', 'V',
 		'B', 'N', 'M', '<', '>', '?', 0, '*', 0, ' ', 0, 0, 0, 0, 0, 0,
 		0, 0, 0, 0, 0, 0, 0, '7', '8', '9', '-', '4', '5', '6', '+', '1',

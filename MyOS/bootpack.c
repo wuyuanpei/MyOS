@@ -18,7 +18,7 @@ void task_b_main(void){
 	sheet_setbuf(sht_window, buf_window, 150, 50, 0xff); // 0xff for col_inv
 	make_window(buf_window, 150, 50, "System Timer", 0);
 	sheet_updown(sht_window, 1);
-	sheet_slide(sht_window, 160, 70);
+	sheet_slide(sht_window, 165, 70);
 	start_timing(1,1);
 	while(1){
 		draw_rect(buf_window, 150, COL8_GRAY, 25, 25, 125, 40);
@@ -31,59 +31,6 @@ void task_b_main(void){
 			fifo_get(& task_now()->fifo);
 			start_timing(1,1);
 		}
-	}
-}
-
-void task_console_main(void){
-	int x = -1, y = 0, show_cursor = 1, xc = 0, yc = 0;
-	struct SHEET *sht_window = sheet_alloc();
-	unsigned char *buf_window = mm_malloc(150*105); // window size
-	sheet_setbuf(sht_window, buf_window, 150, 105, 0xff); // 0xff for col_inv
-	make_window(buf_window, 150, 105, "Command", 1);
-	draw_rect(buf_window, 150, COL8_BLACK, 3, 22, 146, 101);
-	sheet_updown(sht_window, 1);
-	sheet_slide(sht_window, 5, 70);
-	start_timing(1,50);
-	while(1){
-		if(fifo_status(& task_now()->fifo) == 0)
-			task_sleep(task_now());
-		unsigned int data = fifo_get(& task_now()->fifo);
-		if(data == TIMER_OFFSET + 1){
-			start_timing(1,50);
-			if(show_cursor){
-				draw_rect(buf_window, 150, COL8_GREEN, 3 + 8 * xc, 22 + 16 * yc, 10 + 8 * xc, 37 + 16 * yc);
-				sheet_refresh(sht_window, 3 + 8 * xc, 22 + 16 * yc, 11 + 8 * xc, 38 + 16 * yc, 0);
-			}else{
-				draw_rect(buf_window, 150, COL8_BLACK, 3 + 8 * xc, 22 + 16 * yc, 10 + 8 * xc, 37 + 16 * yc);
-				sheet_refresh(sht_window, 3 + 8 * xc, 22 + 16 * yc, 11 + 8 * xc, 38 + 16 * yc, 0);
-			}
-			show_cursor ^= 1;
-			continue;
-		}
-		data = key_to_char(data);
-		if(data == 0) 
-			continue;
-		x++;
-		xc++;
-		if(x == 18){
-			x = 0;
-			y++;
-			if(y==5){
-				y = 0;
-				draw_rect(buf_window, 150, COL8_BLACK, 3, 22, 146, 101);
-				sheet_refresh(sht_window, 3, 22, 147, 102, 0);
-			}
-		}
-		if(xc == 18){
-			xc = 0;
-			yc++;
-			if(yc==5){
-				yc = 0;
-			}
-		}
-		draw_rect(buf_window, 150, COL8_BLACK, 3 + 8 * x, 22 + 16 * y, 10 + 8 * x, 37 + 16 * y);
-		draw_char(buf_window, 150, COL8_GREEN, 3 + 8 * x, 22 + 16 * y, hankaku + data * 16);
-		sheet_refresh(sht_window, 3 + 8 * x, 22 + 16 * y, 11 + 8 * x, 38 + 16 * y, 0);
 	}
 }
 
@@ -126,16 +73,16 @@ void HariMain(void)
 	draw_string(binfo->vram, binfo->xsize, COL8_WHITE, 0, 32, "> GDT/IDT initialized [2]");
 	init_pic();
 	draw_string(binfo->vram, binfo->xsize, COL8_WHITE, 0, 48, "> PIC initialized [3]");
-	
-	init_keyboard();
-	enable_mouse(&mdec);
-	draw_string(binfo->vram, binfo->xsize, COL8_WHITE, 0, 64, "> Keyboard/Mouse initialized [4]");
+	io_sti(); // Setup finished, open INT
+	draw_string(binfo->vram, binfo->xsize, COL8_WHITE, 0, 64, "> CPU interrupt flag initialized [4]");
 	init_pit();
 	draw_string(binfo->vram, binfo->xsize, COL8_WHITE, 0, 80, "> PIT initialized [5]");
+	init_keyboard();
+	enable_mouse(&mdec);
+	draw_string(binfo->vram, binfo->xsize, COL8_WHITE, 0, 96, "> Keyboard/Mouse initialized [6]");
+	
 	io_out8(PIC0_IMR, 0xf8); /* open PIC0 (timer), PIC1, and keyboard INT (11111000) */
 	io_out8(PIC1_IMR, 0xef); /* open mouse INT (11101111) */
-	io_sti(); // Setup finished, open INT
-	draw_string(binfo->vram, binfo->xsize, COL8_WHITE, 0, 96, "> CPU interrupt flag initialized [6]");
 	
 	// Task
 	task_kernal = task_init();
