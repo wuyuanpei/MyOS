@@ -18,7 +18,7 @@ void task_b_main(void){
 	sheet_setbuf(sht_window, buf_window, 150, 50, 0xff); // 0xff for col_inv
 	make_window(buf_window, 150, 50, "System Timer", 0);
 	sheet_updown(sht_window, 1);
-	sheet_slide(sht_window, 165, 70);
+	sheet_slide(sht_window, 475, 30);
 	start_timing(1,1);
 	while(1){
 		draw_rect(buf_window, 150, COL8_GRAY, 25, 25, 125, 40);

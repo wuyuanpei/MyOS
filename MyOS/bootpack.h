@@ -283,7 +283,7 @@ void inthandler20(int *esp);
 void start_timing(unsigned char handler, unsigned int duration);
 
 /* console.c */
-#define MAX_CMD_BUF		100		// 99 characters + '\0'
+#define MAX_CMD_BUF		200		// 199 characters + '\0'
 #define MAX_ARG_BUF		33		// 1 + 32 args
 #define BUILDIN_CMD_NUM 10
 void task_console_main(void);
@@ -296,5 +296,5 @@ struct FILEINFO {
 	unsigned short time, date, clustno;
 	unsigned int size;
 };
-
-
+void file_readfat(int *fat, unsigned char *img);
+void file_loadfile(int clustno, int size, char *buf, int *fat, char *img);

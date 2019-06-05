@@ -9,8 +9,9 @@ static int x = -1, y = -1, xc = -1, yc = -1, show_cursor = 1;
 static int width, height;
 // Number of cols and rows that could be displayed
 static int cols, rows; 
-// CMD and ARG bufs
+// CMD, ARGC and ARG bufs
 static char *arg_buf[MAX_ARG_BUF];
+static int argc;
 static char cmd_buf[MAX_CMD_BUF];
 // The index that the input will be put into in the cmd_buf
 static int index;
@@ -26,11 +27,15 @@ static void restore(void);
 static void run_cmd(void);
 static void print_string(char *str);
 
-///////////////////Buildin Commands/////////////////////
+/////////////////// Buildin Commands /////////////////////
 
 // c, cls, clear
 static void cmd_cls(void){
 	int i;
+	if(argc != 1){
+		print_string("Usage: c/clear/cls");
+		return;
+	}
     for (i = 0; i < cols; i++) {
 		new_line(0);
 	}
@@ -41,20 +46,20 @@ static void cmd_cls(void){
 
 // m, mem, memory
 static void cmd_mem(void) {
-	char buf[30];
+	char buf[50];
 	int total = mm_total() >> 20;
 	int use = (mm_total() >> 20) - (mm_check() >> 20);
 	int sbrk = mm_sbrk();
 	int usage = (use * 10000 + (total >> 1)) / total;//Round
-	sprintf(buf,"mem   %d/%d MB", use, total);
+	if(argc != 1){
+		print_string("Usage: m/mem/memory");
+		return;
+	}
+	sprintf(buf,"mem :  %4d / %4d MB       usage:  %2d.%02d %%", use, total, usage / 100, usage % 100);
     print_string(buf);
-	sprintf(buf,"usage %d.%02d %%", usage / 100, usage % 100); 
-    print_string(buf);
-	sprintf(buf,"sbrk  0x%08x",sbrk);
+	sprintf(buf,"sbrk:  0x%08x",sbrk);
 	print_string(buf);
-	sprintf(buf," -u   %d MB",(mm_total() - sbrk) >> 20);
-	print_string(buf);
-	sprintf(buf," -f   %d MB",(mm_check() >> 20) - ((mm_total() - mm_sbrk()) >> 20));
+	sprintf(buf," -u :  %4d MB              -f   :  %4d MB", (mm_total() - sbrk) >> 20, (mm_check() >> 20) - ((mm_total() - mm_sbrk()) >> 20));
 	print_string(buf);
 }
 
@@ -63,6 +68,10 @@ static void cmd_ls(void) {
 	struct FILEINFO *finfo = (struct FILEINFO *) (ADR_DISK_IMG + 0x002600);
 	char buf[30];
 	int x, y;
+	if(argc != 1){
+		print_string("Usage: ls/dir");
+		return;
+	}
 	for (x = 0; x < 224; x++) { // At most 224 files
 		if (finfo[x].name[0] == 0x00) { // First character is 0 : No such file
 			continue;
@@ -72,10 +81,10 @@ static void cmd_ls(void) {
 			if ((finfo[x].type & 0x18) == 0) {
 				int size = (finfo[x].size + 512) >> 10; // Size in KB
 				// Less than 1 KB
-				if(size < 1)
-					sprintf(buf, "filename.ext %4d B", finfo[x].size);
+				if(finfo[x].size < 1024)
+					sprintf(buf, "filename.ext %6d B", finfo[x].size);
 				else // more than 1 KB
-					sprintf(buf, "filename.ext %4d K", size);
+					sprintf(buf, "filename.ext %6d K", size);
 				for (y = 0; y < 8; y++) {
 					buf[y] = finfo[x].name[y];
 				}
@@ -90,14 +99,17 @@ static void cmd_ls(void) {
 
 // type, cat
 static void cmd_type(void) {
+	// Every time this command is run, we decompress FAT one time and copy
+	// the file data into p
+	int *fat; // fat buffer
 	int index = 0;
 	char buf[13] = {0};
 	char *p;
 	int i, j;
 	struct FILEINFO *finfo = (struct FILEINFO *) (ADR_DISK_IMG + 0x002600);
 	// Cmd format not correct
-	if(arg_buf[1] == 0){
-		print_string("Usage: type/cat [filename]");
+	if(argc != 2){
+		print_string("Usage: cat/type [filename]");
 		return;
 	}
 	// Turn all characters into lowercase
@@ -139,23 +151,30 @@ static void cmd_type(void) {
 				if(str_cmp(arg_buf[1],buf)){
 					// Found
 					j = finfo[i].size; // File Size
-					// File content
-					p = (char *) (finfo[i].clustno * 512 + 0x003e00 + ADR_DISK_IMG);
+					fat = (int *)mm_malloc(2880 * 4);
+					// Decompress FAT into fat
+					file_readfat(fat, (unsigned char *)(ADR_DISK_IMG + 0x200));
+					// File buffer
+					p = (char *) mm_malloc(j);
+					file_loadfile(finfo[i].clustno, j, p, fat, (unsigned char *)(ADR_DISK_IMG + 0x3e00));
 					// Printinfo
 					new_line(0);
 					for(i = 0; i < j; i++){
-						if((*(p+i)) == 0x0D) continue; // Carriage Return
+						if((*(p+i)) == 0x0D) continue; // Carriage Return '\r'
 						if((*(p+i)) == 0x0A) { // '\n'
 							new_line(0);
 							continue;
 						}
 						if((*(p+i)) == 0x09) { // Tab
-							while((x % 4) != 0)
+							do{
 								new_char(' ');
+							} while((x % 4) != 0);
 							continue;
 						}
 						new_char(*(p+i));
 					}
+					mm_free(fat);
+					mm_free(p);
 					return;
 				}
 			}
@@ -173,7 +192,7 @@ static void (*buildin_cmd_addr[BUILDIN_CMD_NUM])(void) = {
 	& cmd_ls, & cmd_ls, & cmd_type, & cmd_type
 };
 
-////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////
 
 // Draw a new line with 1 : drawing '>'; with 0 : nothing
 static void new_line(char arg){
@@ -245,6 +264,7 @@ static void parse_cmd(void){
         }
         // Set the char pointer
         buf[count_buf] = cmd;
+		argc++;
         // Move to the first space character
         while(*cmd != ' '){
             // If we reach the end of the line immediately after an argument
@@ -281,6 +301,7 @@ static char str_cmp(char *test, char *target){
 */
 static void restore(void) {
 	index = 0;
+	argc = 0;
 	int i;
 	for (i = 0; i < MAX_ARG_BUF; i++)
 	{
@@ -295,7 +316,7 @@ static void restore(void) {
 // Run the command based on arg_buf[0] and buildin_cmd[i]
 static void run_cmd(void) {
     char *cmd = arg_buf[0];
-	if(cmd == 0) return; // Empty
+	if(argc == 0) return; // Empty
 	int i;
     for(i = 0; i < BUILDIN_CMD_NUM; i++) {
 		if(str_cmp(cmd, buildin_cmd[i])) {
@@ -311,8 +332,8 @@ static void run_cmd(void) {
 void task_console_main(void)
 {
 	// Initialize window data
-	width = 166;
-	height = 121;
+	width = 406;
+	height = 345;
 	cols = (width - 6) >> 3; // Minus the margin and then / 8
 	rows = (height - 25) >> 4; // Minus the margin and then / 16
 	// Initialize sheet and buffer
@@ -358,6 +379,8 @@ void task_console_main(void)
 			continue;
 		// Enter
 		if(ch == '\n'){
+			// If no input, continue
+			if(index == 0) continue;
 			// Set the cursor black
 			draw_rect(buf_window, width, COL8_BLACK, 3 + 8 * xc, 22 + 16 * yc, 10 + 8 * xc, 37 + 16 * yc);
 			sheet_refresh(sht_window, 3 + 8 * xc, 22 + 16 * yc, 11 + 8 * xc, 38 + 16 * yc, 0);

@@ -2,7 +2,7 @@
 ; TAB = 4
 [INSTRSET "i486p"]				; using 486 instruction set
 
-VBEMODE	EQU		0x105
+VBEMODE	EQU		0x101
 ;	0x100 :  640 x  400 x 8bit
 ;	0x101 :  640 x  480 x 8bit
 ;	0x103 :  800 x  600 x 8bit
@@ -24,7 +24,7 @@ VRAM	EQU		0x0ff8			; Starting address of Display Buffer
 		ORG		0xc200		; Starting address of the boot program
 
 ; Set up the screen
-; If VBEMODE not set
+; If VBEMODE not set ( == 0)
 		MOV		AX,VBEMODE
 		TEST		AX,AX
 		JE		scrn320
