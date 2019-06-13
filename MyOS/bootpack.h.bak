@@ -136,6 +136,8 @@ void HariMain(void);
 void sys_error(char * error_info);
 /* Print out debug information */
 void sys_debug(char * debug_info);
+/* Draw a window: act: the window is active */
+void make_window(unsigned char *buf, int xsize, int ysize, char *title, char act);
 
 /* mouse.c */
 /* Mouse Decode Struct*/
@@ -296,7 +298,3 @@ struct FILEINFO {
 };
 void file_readfat(int *fat, unsigned char *img);
 void file_loadfile(int clustno, int size, char *buf, int *fat, char *img);
-
-/* window.c */
-/* Draw a window: act: the window is active */
-void make_window(unsigned char *buf, int xsize, int ysize, char *title, char act);

@@ -58,7 +58,7 @@ static void cmd_mem(void) {
 	}
 	sprintf(buf,"mem  :  %4d / %4d MB       usage:  %2d.%02d %%", use, total, usage / 100, usage % 100);
     print_string(buf);
-	sprintf(buf,"sbrk :  0x%08x",sbrk);
+	sprintf(buf,"sbrk :   0x%08x",sbrk);
 	print_string(buf);
 	sprintf(buf," -u  :  %4d MB              -f   :  %4d MB", (mm_total() - sbrk) >> 20, (mm_check() >> 20) - ((mm_total() - mm_sbrk()) >> 20));
 	print_string(buf);
