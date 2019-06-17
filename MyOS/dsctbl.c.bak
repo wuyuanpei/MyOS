@@ -32,7 +32,7 @@ void init_gdtidt(void)
 	//set_gatedesc(idt + 0x27, (int) asm_inthandler27, 2 << 3, AR_INTGATE32);
 	set_gatedesc(idt + 0x2c, (int) asm_inthandler2c, 2 << 3, AR_INTGATE32);
 	// API
-	set_gatedesc(idt + 0x30, (int) api_call, 2 << 3, AR_INTGATE32);
+	set_gatedesc(idt + 0x30, (int) api_print, 2 << 3, AR_INTGATE32);
 }
 
 void set_segmdesc(struct SEGMENT_DESCRIPTOR *sd, unsigned int limit,

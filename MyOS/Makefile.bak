@@ -55,6 +55,7 @@ haribote.img : ipl10.bin haribote.sys Makefile
 		copy from:haribote.sys to:@: \
 		copy from:file.c to:@: \
 		copy from:cmd.bat to:@: \
+		copy from:test.hrb to:@: \
 		imgout:haribote.img
 
 # 应用程序生成

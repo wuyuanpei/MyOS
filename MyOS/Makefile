@@ -60,7 +60,7 @@ haribote.img : ipl10.bin haribote.sys Makefile
 
 # 应用程序生成
 %.hrb : %.nas Makefile
-	$(NASK) $*.nas $*.hrb $*.lst
+	$(NASK) $*.nas $*.hrb
 
 # 其他指令
 

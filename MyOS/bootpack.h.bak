@@ -65,6 +65,9 @@ void asm_inthandler2c(void); // Inthandler preset
 unsigned int memtest_sub(unsigned int start, unsigned int end);
 // Far jump, used in context switching
 void farjmp(int eip, int cs);
+void farcall(int eip, int cs);
+// API functions
+void api_call(void);
 
 /** graphic.c */
 void init_palette(void); // Initialize palette
@@ -136,8 +139,8 @@ void HariMain(void);
 void sys_error(char * error_info);
 /* Print out debug information */
 void sys_debug(char * debug_info);
-/* Draw a window: act: the window is active */
-void make_window(unsigned char *buf, int xsize, int ysize, char *title, char act);
+/* API selection */
+void api_selection(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int eax);
 
 /* mouse.c */
 /* Mouse Decode Struct*/
@@ -287,6 +290,7 @@ void start_timing(unsigned char handler, unsigned int duration);
 #define MAX_ARG_BUF		33		// 1 + 32 args
 #define BUILDIN_CMD_NUM 10
 void task_console_main(void);
+void new_line(char arg);
 
 /* file.c */
 // File information standard in FAT
@@ -298,3 +302,7 @@ struct FILEINFO {
 };
 void file_readfat(int *fat, unsigned char *img);
 void file_loadfile(int clustno, int size, char *buf, int *fat, char *img);
+
+/* window.c */
+/* Draw a window: act: the window is active */
+void make_window(unsigned char *buf, int xsize, int ysize, char *title, char act);

@@ -16,9 +16,9 @@
 		GLOBAL  _asm_inthandler2c
 		GLOBAL  _memtest_sub
 		GLOBAL  _farjmp, _farcall
-		GLOBAL  _api_call ;API
+		GLOBAL  _api_print ;API
 		EXTERN	_inthandler20, _inthandler21, _inthandler2c;, _inthandler27
-		EXTERN  _api_selection
+		EXTERN  _print_string ;API
 		
 [SECTION .text]
 
@@ -245,11 +245,12 @@ _farcall:	; void farcall(int eip, int cs);
 		CALL	FAR	[ESP+4]	; CALL cs:eip
 		RET
 
-_api_call:	; API funtion as INT 0x30
+_api_print:	; API funtion as INT 0x30
 		STI
 		PUSHAD
-		PUSHAD
-		CALL		_api_selection
-		POPAD
+		MOV		EAX,CS
+		PUSH		EAX
+		CALL		_print_string ;void print_string(char *str);
+		POP		EAX
 		POPAD
 		IRETD

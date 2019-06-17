@@ -65,6 +65,9 @@ void asm_inthandler2c(void); // Inthandler preset
 unsigned int memtest_sub(unsigned int start, unsigned int end);
 // Far jump, used in context switching
 void farjmp(int eip, int cs);
+void farcall(int eip, int cs);
+// API functions
+void api_call(void);
 
 /** graphic.c */
 void init_palette(void); // Initialize palette
@@ -136,6 +139,8 @@ void HariMain(void);
 void sys_error(char * error_info);
 /* Print out debug information */
 void sys_debug(char * debug_info);
+/* API selection */
+void api_selection(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int eax);
 
 /* mouse.c */
 /* Mouse Decode Struct*/
@@ -285,6 +290,7 @@ void start_timing(unsigned char handler, unsigned int duration);
 #define MAX_ARG_BUF		33		// 1 + 32 args
 #define BUILDIN_CMD_NUM 10
 void task_console_main(void);
+void print_string(char *str);
 
 /* file.c */
 // File information standard in FAT

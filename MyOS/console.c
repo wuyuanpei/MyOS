@@ -26,9 +26,9 @@ static char str_cmp(char *test, char *target);
 static void str_uppercase(char *str);
 static void restore(void);
 static void run_cmd(void);
-static void print_string(char *str);
-
-/////////////////// Buildin Commands /////////////////////
+//static void print_string(char *str);
+static int run_program(char *ext);
+////////////////////////////////////////// Buildin Commands ///////////////////////////////////////////////
 
 // c, cls, clear
 static void cmd_cls(void){
@@ -187,7 +187,7 @@ static void (*buildin_cmd_addr[BUILDIN_CMD_NUM])(void) = {
 	& cmd_ls, & cmd_ls, & cmd_type, & cmd_type
 };
 
-//////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Draw a new line with 1 : drawing '>'; with 0 : nothing
 static void new_line(char arg){
@@ -234,7 +234,7 @@ static void new_char(char ch){
 }
 
 // New a line and draw a string
-static void print_string(char *str) {
+void print_string(char *str) {
 	new_line(0);
 	while(*str){
 		new_char(*(str++));
@@ -320,12 +320,86 @@ static void restore(void) {
 	}
 }
 
+
+/* 
+ * Run a program if the cmd is a program 
+ * Support formats:  a or a.ext (ext has to be in the format of "ABC")
+ * Return 0 if program not found, else return 1
+ */
+int program_addr = 0; // The starting address of the program
+static int run_program(char *ext) {
+	// Every time this command is run, we decompress FAT one time and copy
+	// the file data into p
+	int *fat; // fat buffer
+	char buf1[9] = {0}; //a
+	char buf2[13] = {0}; //a.ext
+	char *p;
+	int i, j;
+	struct FILEINFO *finfo = (struct FILEINFO *) (ADR_DISK_IMG + 0x002600);
+	struct SEGMENT_DESCRIPTOR *gdt = (struct SEGMENT_DESCRIPTOR *) ADR_GDT;
+	// Iterate all the entries
+	for (i = 0; i < 224; i++) { // At most 224 files
+		if (finfo[i].name[0] == 0x00) { // First character is 0 : No such file
+			continue;
+		}
+		if (ext[0] != finfo[i].ext[0] || ext[1] != finfo[i].ext[1] || ext[2] != finfo[i].ext[2]) { // This is not a program
+			continue;
+		}
+		if (finfo[i].name[0] != 0xe5) { // File not deleted
+			// Exclude directory and non-file information
+			if ((finfo[i].type & 0x18) == 0) {
+				// Empty the buffer
+				for(j = 0; j < 9; j++){
+					buf1[j] = 0;
+				}
+				// Empty the buffer
+				for(j = 0; j < 13; j++){
+					buf2[j] = 0;
+				}
+				// Copy at most 8 chars
+				for (j = 0; j < 8; j++) {
+					if(finfo[i].name[j] != ' '){
+						buf1[j] = finfo[i].name[j];
+						buf2[j] = finfo[i].name[j];
+					}else
+						break;
+				}
+				buf2[j] = '.';
+				buf2[j+1] = ext[0];
+				buf2[j+2] = ext[1];
+				buf2[j+3] = ext[2];
+				// Compare the filename.ext
+				if(str_cmp(arg_buf[0],buf1)||str_cmp(arg_buf[0],buf2)){
+					// Found
+					j = finfo[i].size; // File Size
+					fat = (int *)mm_malloc(2880 * 4);
+					// Decompress FAT into fat
+					file_readfat(fat, (unsigned char *)(ADR_DISK_IMG + 0x200));
+					// File buffer
+					p = (char *) mm_malloc(j);
+					file_loadfile(finfo[i].clustno, j, p, fat, (unsigned char *)(ADR_DISK_IMG + 0x3e00));
+					// Run the program
+					// The segment is set to 1003 rd entry in gdt
+					set_segmdesc(gdt + 1003, finfo[i].size - 1, (int)p, AR_CODE32_ER);
+					program_addr = (int)p;
+					farcall(0, 1003 * 8);
+					// Free the memory
+					mm_free(fat);
+					mm_free(p);
+					return 1;
+				}
+			}
+		}
+	}
+	return 0;
+}
+
 // Run the command based on arg_buf[0] and buildin_cmd[i]
 static void run_cmd(void) {
     char *cmd = arg_buf[0];
+	int i;
 	str_uppercase(cmd);
 	if(argc == 0) return; // Empty
-	int i;
     for(i = 0; i < BUILDIN_CMD_NUM; i++) {
 		if(str_cmp(cmd, buildin_cmd[i])) {
 			// Run the buildin command in the same task
@@ -333,7 +407,8 @@ static void run_cmd(void) {
 			return;
 		}
     }
-	print_string("Command Not Found");
+	if(run_program("HRB") == 0)
+		print_string("Command Not Found");
 }
 
 // CMD task Main method
