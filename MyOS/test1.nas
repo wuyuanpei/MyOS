@@ -1,0 +1,4 @@
+[INSTRSET "i486p"]
+[BITS 32]
+	DB	"HELLOWORLD"
+	DB	0

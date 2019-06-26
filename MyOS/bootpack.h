@@ -28,6 +28,10 @@ void set_segmdesc(struct SEGMENT_DESCRIPTOR *sd, unsigned int limit,
  int base, int ar); // Set one gdt entry
 void set_gatedesc(struct GATE_DESCRIPTOR *gd, int offset,
  int selector, int ar); // Set one idt entry
+int inthandler00(int *esp); // Inthandler for divide by zero exception
+int inthandler06(int *esp); // Inthandler for illegal instruction exception
+int inthandler0c(int *esp); // Inthandler for stack exception
+int inthandler0d(int *esp); // Inthandler for protected exception
 #define ADR_IDT			0x0026f800
 #define LIMIT_IDT		0x000007ff
 #define ADR_GDT			0x00270000
@@ -57,15 +61,19 @@ void load_idtr(int limit, int addr); // Load interrupt descriptor table register
 void load_tr(int tr); // Load task register
 int load_cr0(void); // Load CR0
 void store_cr0(int cr0); // Store CR0
+void asm_inthandler00(void); // Inthandler preset
+void asm_inthandler06(void); // Inthandler preset
+void asm_inthandler0c(void); // Inthandler preset
+void asm_inthandler0d(void); // Inthandler preset
 void asm_inthandler20(void); // Inthandler preset
 void asm_inthandler21(void); // Inthandler preset
-//void asm_inthandler27(void);
 void asm_inthandler2c(void); // Inthandler preset
 // Memory test
 unsigned int memtest_sub(unsigned int start, unsigned int end);
 // Far jump, used in context switching
 void farjmp(int eip, int cs);
-void farcall(int eip, int cs);
+// Run an application
+void start_app(int eip, int cs, int esp, int ds, int *tss_esp0);
 // API functions
 void api_call(void);
 
@@ -140,7 +148,7 @@ void sys_error(char * error_info);
 /* Print out debug information */
 void sys_debug(char * debug_info);
 /* API selection */
-void api_selection(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int eax);
+int *api_selection(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int eax);
 
 /* mouse.c */
 /* Mouse Decode Struct*/

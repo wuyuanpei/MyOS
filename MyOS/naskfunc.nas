@@ -12,12 +12,13 @@
 		GLOBAL	_io_load_eflags, _io_store_eflags
 		GLOBAL	_load_gdtr, _load_idtr, _load_tr
 		GLOBAL	_load_cr0, _store_cr0
-		GLOBAL	_asm_inthandler20, _asm_inthandler21;,_asm_inthandler27
-		GLOBAL  _asm_inthandler2c
+		GLOBAL	_asm_inthandler20, _asm_inthandler21, _asm_inthandler2c
+		GLOBAL	_asm_inthandler0d,_asm_inthandler0c,_asm_inthandler00,_asm_inthandler06
 		GLOBAL  _memtest_sub
-		GLOBAL  _farjmp, _farcall
+		GLOBAL  _farjmp, _start_app
 		GLOBAL  _api_call ;API
-		EXTERN	_inthandler20, _inthandler21, _inthandler2c;, _inthandler27
+		EXTERN	_inthandler20, _inthandler21, _inthandler2c
+		EXTERN	_inthandler0d,_inthandler0c,_inthandler00,_inthandler06
 		EXTERN  _api_selection
 		
 [SECTION .text]
@@ -102,11 +103,11 @@ _load_tr:		; void load_tr(int tr);
 		RET
 
 _asm_inthandler20:
-		PUSH		ES
-		PUSH		DS
+		PUSH	ES
+		PUSH	DS
 		PUSHAD
 		MOV		EAX,ESP
-		PUSH		EAX
+		PUSH	EAX
 		MOV		AX,SS
 		MOV		DS,AX
 		MOV		ES,AX
@@ -118,11 +119,11 @@ _asm_inthandler20:
 		IRETD
 
 _asm_inthandler21:
-		PUSH		ES
-		PUSH		DS
+		PUSH	ES
+		PUSH	DS
 		PUSHAD
 		MOV		EAX,ESP
-		PUSH		EAX
+		PUSH	EAX
 		MOV		AX,SS
 		MOV		DS,AX
 		MOV		ES,AX
@@ -133,25 +134,9 @@ _asm_inthandler21:
 		POP		ES
 		IRETD
 
-;_asm_inthandler27:
-		;PUSH		ES
-		;PUSH		DS
-		;PUSHAD
-		;MOV		EAX,ESP
-		;PUSH	EAX
-		;MOV		AX,SS
-		;MOV		DS,AX
-		;MOV		ES,AX
-		;CALL	_inthandler27
-		;POP		EAX
-		;POPAD
-		;POP		DS
-		;POP		ES
-		;IRETD
-
 _asm_inthandler2c:
-		PUSH		ES
-		PUSH		DS
+		PUSH	ES
+		PUSH	DS
 		PUSHAD
 		MOV		EAX,ESP
 		PUSH	EAX
@@ -163,6 +148,86 @@ _asm_inthandler2c:
 		POPAD
 		POP		DS
 		POP		ES
+		IRETD
+
+_asm_inthandler00:	; divide by zero exception handler
+		STI
+		PUSH	ES
+		PUSH	DS
+		PUSHAD
+		MOV		EAX,ESP
+		PUSH	EAX
+		MOV		AX,SS
+		MOV		DS,AX
+		MOV		ES,AX
+		CALL	_inthandler00
+		CMP		EAX,0		; if non-zero, kill the application
+		JNE		end_app
+		POP		EAX
+		POPAD
+		POP		DS
+		POP		ES
+		ADD		ESP,4		; special for INT 0x0
+		IRETD
+
+_asm_inthandler06:	; illegal instruction exception handler
+		STI
+		PUSH	ES
+		PUSH	DS
+		PUSHAD
+		MOV		EAX,ESP
+		PUSH	EAX
+		MOV		AX,SS
+		MOV		DS,AX
+		MOV		ES,AX
+		CALL	_inthandler06
+		CMP		EAX,0		; if non-zero, kill the application
+		JNE		end_app
+		POP		EAX
+		POPAD
+		POP		DS
+		POP		ES
+		ADD		ESP,4		; special for INT 0x06
+		IRETD
+
+_asm_inthandler0d:	; protected exception handler
+		STI
+		PUSH	ES
+		PUSH	DS
+		PUSHAD
+		MOV		EAX,ESP
+		PUSH	EAX
+		MOV		AX,SS
+		MOV		DS,AX
+		MOV		ES,AX
+		CALL	_inthandler0d
+		CMP		EAX,0		; if non-zero, kill the application
+		JNE		end_app
+		POP		EAX
+		POPAD
+		POP		DS
+		POP		ES
+		ADD		ESP,4		; special for INT 0x0d
+		IRETD
+
+_asm_inthandler0c:	; stack exception handler
+		STI
+		PUSH	ES
+		PUSH	DS
+		PUSHAD
+		MOV		EAX,ESP
+		PUSH	EAX
+		MOV		AX,SS
+		MOV		DS,AX
+		MOV		ES,AX
+		CALL	_inthandler0c
+		CMP		EAX,0		; if non-zero, kill the application
+		JNE		end_app
+		POP		EAX
+		POPAD
+		POP		DS
+		POP		ES
+		ADD		ESP,4		; special for INT 0x0c
 		IRETD
 		
 _load_cr0:		; int load_cr0(void);
@@ -241,15 +306,51 @@ _farjmp:	; void farjmp(int eip, int cs);
 		JMP	FAR	[ESP+4]	; JMP cs:eip
 		RET
 
-_farcall:	; void farcall(int eip, int cs);
-		CALL	FAR	[ESP+4]	; CALL cs:eip
-		RET
-
 _api_call:	; API funtion as INT 0x30
+		; CLI will be called automatically during INT
 		STI
-		PUSHAD
-		PUSHAD
+		PUSH	DS
+		PUSH	ES
+		PUSHAD		; store values in application's stack
+		PUSHAD		; arguments to _api_selection
+		MOV		AX,SS
+		MOV		DS,AX		; set to OS's segment
+		MOV		ES,AX
+
 		CALL		_api_selection
+
+		CMP		EAX,0		; When EAX is not 0, application ends
+		JNE		end_app
+		ADD		ESP,32
 		POPAD
-		POPAD
+		POP		ES
+		POP		DS
 		IRETD
+end_app:
+;	EAX is tss.esp0 address
+		MOV		ESP,[EAX]
+		POPAD
+		RET		; return to run_program(char *ext)
+
+_start_app:	; void start_app(int eip, int cs, int esp, int ds, int *tss_esp0);
+		PUSHAD		; store registers
+		MOV		EAX,[ESP+36]	; EIP
+		MOV		ECX,[ESP+40]	; CS
+		MOV		EDX,[ESP+44]	; ESP
+		MOV		EBX,[ESP+48]	; DS/SS
+		MOV		EBP,[ESP+52]	; tss.esp0 address
+		MOV		[EBP],ESP
+		MOV		[EBP+4],SS	; store OS' esp and ss in TSS
+		MOV		ES,BX
+		MOV		DS,BX
+		MOV		FS,BX
+		MOV		GS,BX
+; Adjust stack to use RETF to call the application
+		OR		ECX,3		; CS or 3
+		OR		EBX,3		; DS or 3 : tricks to use RETF
+		PUSH		EBX
+		PUSH		EDX
+		PUSH		ECX		; CS
+		PUSH		EAX		; EIP
+		RETF
+		

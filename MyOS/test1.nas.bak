@@ -1,0 +1,3 @@
+[INSTRSET "i486p"]
+[BITS 32]
+	MOV	SS,3

@@ -1,0 +1,4 @@
+/* System API header file */
+/* functions defined in syslib_asm.nas */
+void print_int(int); // Print an integer
+void print_str(char *); // Print a string

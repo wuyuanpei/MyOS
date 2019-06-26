@@ -221,19 +221,25 @@ void sys_debug(char * debug_info)
 	draw_string(binfo->vram, binfo->xsize, COL8_BLACK, 0, 16,buf);
 }
 
-/* Select which api to use (called by _api_call) PUSHAD */
+/* 
+ * Select which api to use (called by _api_call) PUSHAD 
+ * If return non-zero, the application ends and the return value is tss.esp0
+*/
 extern int program_addr;
-void api_selection(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int eax) {
+int* api_selection(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int eax) {
 	char buf[30];
 	switch(eax){
+		case 0:
+			return &(task_now()->tss.esp0);
 		case 1:
 			sprintf(buf,"%d",ecx);
 			print_string(buf);
-			break;
+			return 0;
 		case 2:
 			print_string(ecx + program_addr);
-			break;
+			return 0;
 	}
+	return 0;
 }
 
 

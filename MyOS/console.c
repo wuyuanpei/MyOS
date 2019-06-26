@@ -333,7 +333,7 @@ static int run_program(char *ext) {
 	int *fat; // fat buffer
 	char buf1[9] = {0}; //a
 	char buf2[13] = {0}; //a.ext
-	char *p;
+	char *p, *q;
 	int i, j;
 	struct FILEINFO *finfo = (struct FILEINFO *) (ADR_DISK_IMG + 0x002600);
 	struct SEGMENT_DESCRIPTOR *gdt = (struct SEGMENT_DESCRIPTOR *) ADR_GDT;
@@ -377,15 +377,36 @@ static int run_program(char *ext) {
 					file_readfat(fat, (unsigned char *)(ADR_DISK_IMG + 0x200));
 					// File buffer
 					p = (char *) mm_malloc(j);
+					q = (char *) mm_malloc(64 * 1024); // Data section buffer
 					file_loadfile(finfo[i].clustno, j, p, fat, (unsigned char *)(ADR_DISK_IMG + 0x3e00));
+					// Set main function's entrance if the application is written in C
+					if(j > 11 && *(p+4) == 'H' && *(p+5) == 'a' && *(p+6) == 'r' && *(p+7) == 'i'){ // File size >= 8
+						p[0] = 0xe8;
+						p[1] = 0x16;
+						p[2] = 0x00;
+						p[3] = 0x00;
+						p[4] = 0x00;
+						p[5] = 0xb8;
+						p[6] = 0x00;
+						p[7] = 0x00;
+						p[8] = 0x00;
+						p[9] = 0x00;
+						p[10] = 0xcd;
+						p[11] = 0x30;	// CALL 0x1b; MOV EAX,0; INT 0x30
+					}
 					// Run the program
-					// The segment is set to 1003 rd entry in gdt
-					set_segmdesc(gdt + 1003, finfo[i].size - 1, (int)p, AR_CODE32_ER);
+					// The code segment is set to 1003 rd entry in gdt
+					set_segmdesc(gdt + 1003, finfo[i].size - 1, (int)p, AR_CODE32_ER + 0x60); //application mode
+					// The data segment is set to 1004 th entry in gdt
+					set_segmdesc(gdt + 1004, 64 * 1024 - 1, (int)q, AR_DATA32_RW + 0x60); //application mode
 					program_addr = (int)p;
-					farcall(0, 1003 * 8);
+					// Run the app
+					// In application mode, we have to store segment address and esp of OS in TSS
+					start_app(0, 1003 * 8, 64 * 1024, 1004 * 8, &(task_now()->tss.esp0));
 					// Free the memory
 					mm_free(fat);
 					mm_free(p);
+					mm_free(q);
 					return 1;
 				}
 			}

@@ -55,12 +55,22 @@ haribote.img : ipl10.bin haribote.sys Makefile
 		copy from:haribote.sys to:@: \
 		copy from:file.c to:@: \
 		copy from:cmd.bat to:@: \
-		copy from:test.hrb to:@: \
+		copy from:ctest.hrb to:@: \
+		copy from:ctest2.hrb to:@: \
+		copy from:test1.hrb to:@: \
+		copy from:test2.hrb to:@: \
+		copy from:test3.hrb to:@: \
 		imgout:haribote.img
 
 # 应用程序生成
-%.hrb : %.nas Makefile
-	$(NASK) $*.nas $*.hrb
+#%.hrb : %.nas Makefile
+#	$(NASK) $*.nas $*.hrb $*.lst
+
+%.bim : %.obj syslib_asm.obj Makefile
+	$(OBJ2BIM) @$(RULEFILE) out:$*.bim map:$*.map $*.obj syslib_asm.obj
+
+%.hrb : %.bim Makefile
+	$(BIM2HRB) $*.bim $*.hrb 0
 
 # 其他指令
 
