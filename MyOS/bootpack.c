@@ -241,15 +241,46 @@ extern int program_addr;
 int* api_selection(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int eax) {
 	int * ret = &eax + 8; // The api return value address (see POPAD in _api_call in naskfunc.nas)
 	char buf[50];
+	// Sheet and buffer for EAX = 3
+	struct SHEET *sht_window;
+	unsigned char *buf_window;
 	switch(eax){
 		case 0:
+			// Terminate application API
 			return &(task_now()->tss.esp0);
 		case 1:
+			// Print an integer API
 			sprintf(buf,"%d",ecx);
 			print_string(buf);
 			return 0;
 		case 2:
+			// Print a string API
 			print_string(ecx + program_addr);
+			return 0;
+		case 3:
+			// Create a window API 注意：当程序结束以后这个窗口的缓存区并未清除，因此有内存溢出
+			// Initialize sheet and buffer
+			sht_window = sheet_alloc();
+			buf_window = mm_malloc(ebx * ecx); // window size
+			sheet_setbuf(sht_window, buf_window, ebx, ecx, 0xff); // 0xff for col_inv
+			make_window(buf_window, ebx, ecx, program_addr + edx, 0);
+			// Black background
+			sheet_updown(sht_window, 1);
+			sheet_slide(sht_window, edi, esi); // Position on the screen
+			// Return the sheet handler
+			* ret = (int) sht_window;
+			return 0;
+		case 4:
+			// Draw a string on a window API
+			sht_window = (struct SHEET *) ebx;
+			draw_string(sht_window->buf, sht_window->bxsize, ecx, edi, esi, program_addr + edx);
+			sheet_refresh(sht_window, edi, esi, sht_window->bxsize, esi + 16, 1);
+			return 0;
+		case 5:
+			// Draw a rectangle on a window API
+			sht_window = (struct SHEET *) ebx;
+			draw_rect(sht_window->buf, sht_window->bxsize, ebp, ecx, edx, edi, esi);
+			sheet_refresh(sht_window, ecx, edx, edi + 1, esi + 1, 1);
 			return 0;
 	}
 	return 0;

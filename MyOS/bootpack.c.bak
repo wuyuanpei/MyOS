@@ -241,6 +241,9 @@ extern int program_addr;
 int* api_selection(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int eax) {
 	int * ret = &eax + 8; // The api return value address (see POPAD in _api_call in naskfunc.nas)
 	char buf[50];
+	// Sheet and buffer for EAX = 3
+	struct SHEET *sht_window;
+	unsigned char *buf_window;
 	switch(eax){
 		case 0:
 			return &(task_now()->tss.esp0);
@@ -250,7 +253,28 @@ int* api_selection(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx
 			return 0;
 		case 2:
 			print_string(ecx + program_addr);
-			* ret = 2893457;
+			return 0;
+		case 3:
+			// Initialize sheet and buffer
+			sht_window = sheet_alloc();
+			buf_window = mm_malloc(ebx * ecx); // window size
+			sheet_setbuf(sht_window, buf_window, ebx, ecx, 0xff); // 0xff for col_inv
+			make_window(buf_window, ebx, ecx, program_addr + edx, 0);
+			// Black background
+			sheet_updown(sht_window, 1);
+			sheet_slide(sht_window, edi, esi); // Position on the screen
+			// Return the sheet handler
+			* ret = (int) sht_window;
+			return 0;
+		case 4:
+			sht_window = (struct SHEET *) ebx;
+			draw_string(sht_window->buf, sht_window->bxsize, ecx, edi, esi, program_addr + edx);
+			sheet_refresh(sht_window, edi, esi, sht_window->bxsize, esi + 16, 1);
+			return 0;
+		case 5:
+			sht_window = (struct SHEET *) ebx;
+			draw_rect(sht_window->buf, sht_window->bxsize, ebp, ecx, edx, edi, esi);
+			sheet_refresh(sht_window, ecx, edx, edi + 1, esi + 1, 1);
 			return 0;
 	}
 	return 0;
