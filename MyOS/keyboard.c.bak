@@ -3,9 +3,9 @@
 
 extern struct TASK *task_kernal;
 
-char shift = 0; //SHIFT state
+static char shift = 0; //SHIFT state
 
-char ctrl = 0; //CTRL state
+static char ctrl = 0; //CTRL state
 
 static int key_leds = -1; // LOCKS state
 

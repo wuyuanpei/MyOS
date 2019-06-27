@@ -155,7 +155,19 @@ void HariMain(void)
 			set_kb_led();
 
 		// Keyboard
-		if(data < 256){ // Keyboard input will forward call the focused task
+		if(data < 256){ 
+			// CTRL+C to kill the application (If the console task is in application)
+			extern char ctrl;
+			extern int program_addr;
+			if((key_to_char(data) == 'c' || key_to_char(data) == 'C') && (ctrl == 1) && (program_addr != 0)){
+				io_cli();
+				task_console->tss.eax = (int) &(task_console->tss.esp0);
+				task_console->tss.eip = (int) &end_app;
+				io_sti();
+				print_string("Program Terminated");
+				continue; // Do not send 'c' to the application
+			}
+			// Keyboard input will forward call the focused task
 			fifo_put(&task_focused->fifo, data);
 			task_run(task_focused, -1, 0);
 			char ch[2] = {0};
@@ -227,7 +239,8 @@ void sys_debug(char * debug_info)
 */
 extern int program_addr;
 int* api_selection(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int eax) {
-	char buf[30];
+	int * ret = &eax + 8; // The api return value address (see POPAD in _api_call in naskfunc.nas)
+	char buf[50];
 	switch(eax){
 		case 0:
 			return &(task_now()->tss.esp0);

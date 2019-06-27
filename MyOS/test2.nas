@@ -1,11 +1,12 @@
+[FORMAT "WCOFF"]
 [INSTRSET "i486p"]
 [BITS 32]
-	INT	0x2c
-	MOV	EAX,2
-	MOV	ECX,info
-	INT	0x30
-	MOV	EAX,0
-	INT	0x30
-info:
-	DB	"HELLOWORLD"
-	DB	0
+[FILE "test1.nas"]
+
+	GLOBAL	_HariMain
+
+[SECTION .text]
+
+_HariMain:
+	
+	RET

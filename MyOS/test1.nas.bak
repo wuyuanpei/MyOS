@@ -1,3 +1,21 @@
+[FORMAT "WCOFF"]
 [INSTRSET "i486p"]
 [BITS 32]
-	MOV	SS,3
+[FILE "test1.nas"]
+
+	GLOBAL	_HariMain
+	EXTERN  _print_str
+
+[SECTION .text]
+
+_HariMain:
+	PUSH	msg
+	call	_print_str
+	POP	msg
+	RET
+
+[SECTION .data]
+
+msg:
+	DB	"World"
+	DB	0

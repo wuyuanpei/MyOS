@@ -1,15 +1,15 @@
-text size :    100(0x00064)
+text size :     71(0x00047)
 data size :      0(0x00000)
 bss  size :      0(0x00000)
 
 0x00000024 : (.text)
 0x00000024 : _HariMain
-0x00000060 : (.text)
-0x00000060 : _end
-0x00000067 : _print_int
-0x00000073 : _print_str
-0x0000007F : (.text)
-0x0000007F : _HariStartup
+0x0000003B : (.text)
+0x0000003B : _end
+0x00000042 : _print_int
+0x00000052 : _print_str
+0x00000062 : (.text)
+0x00000062 : _HariStartup
 0x00000000 : (.data)
 0x00000000 : (.data)
 0x00000000 : (.data)

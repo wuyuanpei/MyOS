@@ -67,7 +67,7 @@ haribote.img : ipl10.bin haribote.sys Makefile
 #	$(NASK) $*.nas $*.hrb $*.lst
 
 %.bim : %.obj syslib_asm.obj Makefile
-	$(OBJ2BIM) @$(RULEFILE) out:$*.bim map:$*.map $*.obj syslib_asm.obj
+	$(OBJ2BIM) @$(RULEFILE) out:$*.bim stack:1k map:$*.map $*.obj syslib_asm.obj
 
 %.hrb : %.bim Makefile
 	$(BIM2HRB) $*.bim $*.hrb 0

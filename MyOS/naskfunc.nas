@@ -15,7 +15,7 @@
 		GLOBAL	_asm_inthandler20, _asm_inthandler21, _asm_inthandler2c
 		GLOBAL	_asm_inthandler0d,_asm_inthandler0c,_asm_inthandler00,_asm_inthandler06
 		GLOBAL  _memtest_sub
-		GLOBAL  _farjmp, _start_app
+		GLOBAL  _farjmp, _start_app, _end_app
 		GLOBAL  _api_call ;API
 		EXTERN	_inthandler20, _inthandler21, _inthandler2c
 		EXTERN	_inthandler0d,_inthandler0c,_inthandler00,_inthandler06
@@ -162,7 +162,7 @@ _asm_inthandler00:	; divide by zero exception handler
 		MOV		ES,AX
 		CALL	_inthandler00
 		CMP		EAX,0		; if non-zero, kill the application
-		JNE		end_app
+		JNE		_end_app
 		POP		EAX
 		POPAD
 		POP		DS
@@ -182,7 +182,7 @@ _asm_inthandler06:	; illegal instruction exception handler
 		MOV		ES,AX
 		CALL	_inthandler06
 		CMP		EAX,0		; if non-zero, kill the application
-		JNE		end_app
+		JNE		_end_app
 		POP		EAX
 		POPAD
 		POP		DS
@@ -202,7 +202,7 @@ _asm_inthandler0d:	; protected exception handler
 		MOV		ES,AX
 		CALL	_inthandler0d
 		CMP		EAX,0		; if non-zero, kill the application
-		JNE		end_app
+		JNE		_end_app
 		POP		EAX
 		POPAD
 		POP		DS
@@ -222,7 +222,7 @@ _asm_inthandler0c:	; stack exception handler
 		MOV		ES,AX
 		CALL	_inthandler0c
 		CMP		EAX,0		; if non-zero, kill the application
-		JNE		end_app
+		JNE		_end_app
 		POP		EAX
 		POPAD
 		POP		DS
@@ -320,13 +320,13 @@ _api_call:	; API funtion as INT 0x30
 		CALL		_api_selection
 
 		CMP		EAX,0		; When EAX is not 0, application ends
-		JNE		end_app
+		JNE		_end_app
 		ADD		ESP,32
 		POPAD
 		POP		ES
 		POP		DS
 		IRETD
-end_app:
+_end_app:
 ;	EAX is tss.esp0 address
 		MOV		ESP,[EAX]
 		POPAD
@@ -352,5 +352,6 @@ _start_app:	; void start_app(int eip, int cs, int esp, int ds, int *tss_esp0);
 		PUSH		EDX
 		PUSH		ECX		; CS
 		PUSH		EAX		; EIP
-		RETF
+		RETF				; When the segment is set to "application"
+						; CPU will automatically manage the segment registers
 		

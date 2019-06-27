@@ -1,11 +1,9 @@
 #include "syslib.h"
 
-
+int a = 1233445;
+char buf[] = "wodetian";
 void HariMain(void) {
-	int str[] = {12,45,23};
-	int a = 1234312;
-	print_int(str[19900]);
+	print_str("HelloWorld");
 	print_int(a);
-	//*((char *)0x2fffffff) = 0;
-	//end();
+	print_str(buf);
 }

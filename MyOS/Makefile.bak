@@ -63,14 +63,14 @@ haribote.img : ipl10.bin haribote.sys Makefile
 		imgout:haribote.img
 
 # 应用程序生成
-%.hrb : %.nas Makefile
-	$(NASK) $*.nas $*.hrb $*.lst
+#%.hrb : %.nas Makefile
+#	$(NASK) $*.nas $*.hrb $*.lst
 
-#%.bim : %.obj syslib_asm.obj Makefile
-#	$(OBJ2BIM) @$(RULEFILE) out:$*.bim map:$*.map $*.obj syslib_asm.obj
-#
-#%.hrb : %.bim Makefile
-#	$(BIM2HRB) $*.bim $*.hrb 0
+%.bim : %.obj syslib_asm.obj Makefile
+	$(OBJ2BIM) @$(RULEFILE) out:$*.bim map:$*.map $*.obj syslib_asm.obj
+
+%.hrb : %.bim Makefile
+	$(BIM2HRB) $*.bim $*.hrb 0
 
 # 其他指令
 
