@@ -237,24 +237,30 @@ void sys_debug(char * debug_info)
  * Select which api to use (called by _api_call) PUSHAD 
  * If return non-zero, the application ends and the return value is tss.esp0
 */
+extern int malloc_addr;
 extern int program_addr;
-int* api_selection(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int eax) {
+int* api_selection(unsigned int edi, unsigned int esi, unsigned int ebp, unsigned int esp, unsigned int ebx, unsigned int edx, unsigned int ecx, unsigned int eax) {
 	int * ret = &eax + 8; // The api return value address (see POPAD in _api_call in naskfunc.nas)
+	int dx, dy, i,j;
 	char buf[50];
 	// Sheet and buffer for EAX = 3
 	struct SHEET *sht_window;
 	unsigned char *buf_window;
 	switch(eax){
 		case 0:
+			// Terminate application API
 			return &(task_now()->tss.esp0);
 		case 1:
+			// Print an integer API
 			sprintf(buf,"%d",ecx);
 			print_string(buf);
 			return 0;
 		case 2:
+			// Print a string API
 			print_string(ecx + program_addr);
 			return 0;
 		case 3:
+			// Create a window API 注意：当程序结束以后这个窗口的缓存区并未清除，因此有内存溢出
 			// Initialize sheet and buffer
 			sht_window = sheet_alloc();
 			buf_window = mm_malloc(ebx * ecx); // window size
@@ -267,14 +273,95 @@ int* api_selection(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx
 			* ret = (int) sht_window;
 			return 0;
 		case 4:
+			// Draw a string on a window API
 			sht_window = (struct SHEET *) ebx;
+			// Get the string length
+			i = 0; // String length
+			while((*((char *)(program_addr + edx + j))) && i < 1000){
+				i++;
+			}
+			// Out of window
+			if(esi > sht_window->bysize - 16 || (edi + 8 * i) > sht_window->bxsize){
+				print_error("draw_str error: graphics out of window");
+				return 0;
+			}
 			draw_string(sht_window->buf, sht_window->bxsize, ecx, edi, esi, program_addr + edx);
 			sheet_refresh(sht_window, edi, esi, sht_window->bxsize, esi + 16, 1);
 			return 0;
 		case 5:
+			// Draw a rectangle on a window API
 			sht_window = (struct SHEET *) ebx;
+			// Out of window
+			if(esi >= sht_window->bysize || edi >= sht_window->bxsize){
+				print_error("draw_rec error: graphics out of window");
+				return 0;
+			}
 			draw_rect(sht_window->buf, sht_window->bxsize, ebp, ecx, edx, edi, esi);
 			sheet_refresh(sht_window, ecx, edx, edi + 1, esi + 1, 1);
+			return 0;
+		case 6:
+			// Return the starting address of .space
+			* ret = (int) malloc_addr;
+			return 0;
+		case 7:
+			// Draw a point on a window API
+			sht_window = (struct SHEET *) ebx;
+			// Out of window
+			if(esi >= sht_window->bysize || edi >= sht_window->bxsize){
+				print_error("draw_pt error: graphics out of window");
+				return 0;
+			}
+			sht_window->buf[sht_window->bxsize * esi + edi] = ecx;
+			sheet_refresh(sht_window, edi, esi, edi + 1, esi + 1, 1);
+			return 0;
+		case 8:
+			// Draw a line on a window API
+			sht_window = (struct SHEET *) ebx;
+			// edi must be greater (or equal) than ecx and esi must be greater (or equal) than edx
+			if(edi < ecx){ // switch edi and ecx
+				edi = edi ^ ecx;
+				ecx = edi ^ ecx;
+				edi = edi ^ ecx;
+			}
+			if(esi < edx){ // switch esi and edx
+				esi = esi ^ edx;
+				edx = esi ^ edx;
+				esi = esi ^ edx;
+			}
+			// Out of window
+			if(esi >= sht_window->bysize || edi >= sht_window->bxsize){
+				print_error("draw_line error: graphics out of window");
+				return 0;
+			}
+			// Difference in x and y direction
+			dx = edi - ecx + 1;
+			dy = esi - edx + 1;
+			// Two conditions
+			if(dx > dy){
+				// Go through y
+				for(; edx <= esi; edx++){
+					i = dx / dy;
+					for(j = 0; j < i; j++){
+						sht_window->buf[sht_window->bxsize * edx + ecx + j] = ebp;
+						sheet_refresh(sht_window, ecx + j, edx, ecx + j + 1, edx + 1, 1);
+					}
+					ecx += i;
+					dx -= i;
+					dy --;
+				}
+			}else{
+				// Go through x
+				for(; ecx <= edi; ecx++){
+					i = dy / dx;
+					for(j = 0; j < i; j++){
+						sht_window->buf[sht_window->bxsize * (edx + j) + ecx] = ebp;
+						sheet_refresh(sht_window, ecx, edx + j, ecx + 1, edx + j + 1, 1);
+					}
+					edx += i;
+					dy -= i;
+					dx --;
+				}
+			}
 			return 0;
 	}
 	return 0;

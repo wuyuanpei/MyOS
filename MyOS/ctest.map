@@ -1,22 +1,27 @@
-text size :    268(0x0010C)
-data size :     51(0x00033)
+text size :    454(0x001C6)
+data size :     60(0x0003C)
 bss  size :      0(0x00000)
 
 0x00000024 : (.text)
 0x00000024 : _HariMain
-0x00000087 : _print_int
-0x00000087 : (.text)
-0x00000097 : _print_str
-0x000000A7 : _new_window
-0x000000D1 : _draw_str
-0x000000F9 : _draw_rec
-0x00000127 : (.text)
-0x00000127 : _HariStartup
+0x000000DD : _print_int
+0x000000DD : (.text)
+0x000000ED : _print_str
+0x000000FD : _new_window
+0x00000123 : _draw_str
+0x0000014B : _draw_rec
+0x00000179 : _space
+0x00000181 : _draw_pt
+0x000001A3 : _draw_line
+0x000001D1 : _print_err
+0x000001E1 : (.text)
+0x000001E1 : _HariStartup
 0x00000000 : (.data)
 0x00000000 : (.data)
 0x00000400 : (.data)
 0x00000400 : _a
 0x00000404 : _buf
+0x00000438 : _buf2
 0x00000000 : (.bss)
 0x00000000 : (.bss)
 0x00000000 : (.bss)

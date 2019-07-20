@@ -1,7 +1,12 @@
 #include "syslib.h"
 
-
 void HariMain(void) {
-	int a = 1234312;
-	print_int(a/0);
+	int i, x, y;
+	SHEET s = new_window(100,100,550,300,"stars");
+	draw_rec(s, COL_BLACK, 5, 20, 95, 95);
+	for (i = 0; i < 50; i++) {
+		x = (rand() % 90) +  5;
+		y = (rand() % 75) + 20;
+		draw_pt(s, COL_YELLOW, x, y);
+	}
 }

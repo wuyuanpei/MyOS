@@ -17,5 +17,5 @@ _HariMain:
 [SECTION .data]
 
 msg:
-	DB	"World"
+	DB	"WorldGG"
 	DB	0

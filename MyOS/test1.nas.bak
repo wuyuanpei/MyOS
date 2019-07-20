@@ -11,7 +11,7 @@
 _HariMain:
 	PUSH	msg
 	call	_print_str
-	POP	msg
+	POP	EAX
 	RET
 
 [SECTION .data]

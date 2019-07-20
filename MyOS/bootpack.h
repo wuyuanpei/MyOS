@@ -150,7 +150,7 @@ void sys_error(char * error_info);
 /* Print out debug information */
 void sys_debug(char * debug_info);
 /* API selection */
-int *api_selection(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int eax);
+int* api_selection(unsigned int edi, unsigned int esi, unsigned int ebp, unsigned int esp, unsigned int ebx, unsigned int edx, unsigned int ecx, unsigned int eax);
 
 /* mouse.c */
 /* Mouse Decode Struct*/
@@ -301,6 +301,7 @@ void start_timing(unsigned char handler, unsigned int duration);
 #define BUILDIN_CMD_NUM 10
 void task_console_main(void);
 void print_string(char *str);
+void print_error(char *err);
 
 /* file.c */
 // File information standard in FAT

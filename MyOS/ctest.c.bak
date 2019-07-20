@@ -2,11 +2,21 @@
 
 int a = 1233445;
 char buf[] = "wodetian";
+char *buf2;
 void HariMain(void) {
-	print_str("HelloWorld");
+	int i = 0;
+	print_str("HelloPPP");
 	print_int(a);
-	print_str(buf);
-	SHEET s = new_window(300,40,50,10,"First App Window");
-	draw_str(s, COL_TRANSPARENT, "My String", 20, 10);
-	draw_rec(s, COL_PURPLE, 5, 10, 50, 20);
+	buf2 = (char *)space();
+	for( ;i<1024*102 - 1;i++)
+		buf2[i] = 'a';
+	buf2[1024*102 - 1] = 0;
+	//print_str(buf2);
+	SHEET s = new_window(200,150,425,200,"App");
+	draw_str(s, COL_RED, buf2, 20, 10);
+	draw_rec(s, COL_TRANSPARENT, 5, 10, 50, 20);
+	draw_line(s, COL_D_BLUE, 5, 9, 1000000003, 120);
+
+	int x = 5/0;
+	print_int(x);
 }

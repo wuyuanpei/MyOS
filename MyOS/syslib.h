@@ -29,4 +29,8 @@ void print_int(int); // Print an integer
 void print_str(char *); // Print a string
 SHEET new_window(int width, int height, int x, int y, char *title); // Draw a window
 void draw_str(SHEET sheet, COLOR color, char *str, int x, int y); // Draw a string on the window
-void draw_rec(SHEET sheet, COLOR color, int xi, int yi, int xf, int yf);// Draw a rectangle on the window
+void draw_rec(SHEET sheet, COLOR color, int xi, int yi, int xf, int yf); // Draw a rectangle on the window
+void *space(void); // Return the starting address of .space segment
+void draw_pt(SHEET sheet, COLOR color, int x, int y); // Draw a point on the window
+void draw_line(SHEET sheet, COLOR color, int xi, int yi, int xf, int yf); // Draw a line on the window
+void print_err(char *); // Print an error string

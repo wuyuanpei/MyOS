@@ -3,8 +3,9 @@
 [BITS 32]
 [FILE "syslib_asm.nas"]
 		;GLOBAL	_end
-		GLOBAL	_print_int, _print_str
-		GLOBAL  _new_window, _draw_str, _draw_rec
+		GLOBAL	_print_int, _print_str, _print_err
+		GLOBAL  _new_window, _draw_str, _draw_rec, _draw_pt, _draw_line
+		GLOBAL  _space
 
 [SECTION .text]
 
@@ -31,26 +32,25 @@ _print_str:	; void print_str(char *);
 		POP		ECX
 		POP		EAX
 		RET
+
 _new_window:	;SHEET new_window(int width, int height, int x, int y, char *title);
-		PUSH		EAX
 		PUSH		EBX
 		PUSH		ECX
 		PUSH		EDX
 		PUSH		ESI
 		PUSH		EDI
 		MOV		EAX,3
-		MOV		EBX,[ESP+28]
-		MOV		ECX,[ESP+32]
-		MOV		EDI,[ESP+36]
-		MOV		ESI,[ESP+40]
-		MOV		EDX,[ESP+44]
+		MOV		EBX,[ESP+24]
+		MOV		ECX,[ESP+28]
+		MOV		EDI,[ESP+32]
+		MOV		ESI,[ESP+36]
+		MOV		EDX,[ESP+40]
 		INT		0x30
 		POP		EDI
 		POP		ESI
 		POP		EDX
 		POP		ECX
 		POP		EBX
-		ADD		ESP,4	; leave EAX the return value
 		RET
 
 _draw_str:	;void draw_str(SHEET sheet, COLOR color, char *str, int x, int y);
@@ -97,5 +97,64 @@ _draw_rec:	;void draw_rec(SHEET sheet, COLOR color, int xi, int yi, int xf, int 
 		POP		EDX
 		POP		ECX
 		POP		EBX
+		POP		EAX
+		RET
+
+_space:		;void *space(void);
+		MOV		EAX,6
+		INT		0x30
+		RET
+
+_draw_pt:	;void draw_pt(SHEET sheet, COLOR color, int x, int y);
+		PUSH		EAX
+		PUSH		EBX
+		PUSH		ECX
+		PUSH		ESI
+		PUSH		EDI
+		MOV		EAX,7
+		MOV		EBX,[ESP+24]
+		MOV		ECX,[ESP+28]
+		MOV		EDI,[ESP+32]
+		MOV		ESI,[ESP+36]
+		INT		0x30
+		POP		EDI
+		POP		ESI
+		POP		ECX
+		POP		EBX
+		POP		EAX
+		RET
+
+_draw_line:	;void draw_line(SHEET sheet, COLOR color, int xi, int yi, int xf, int yf);
+		PUSH		EAX
+		PUSH		EBX
+		PUSH		ECX
+		PUSH		EDX
+		PUSH		ESI
+		PUSH		EDI
+		PUSH		EBP
+		MOV		EAX,8
+		MOV		EBX,[ESP+32]
+		MOV		EBP,[ESP+36]
+		MOV		ECX,[ESP+40]
+		MOV		EDX,[ESP+44]
+		MOV		EDI,[ESP+48]
+		MOV		ESI,[ESP+52]
+		INT		0x30
+		POP		EBP
+		POP		EDI
+		POP		ESI
+		POP		EDX
+		POP		ECX
+		POP		EBX
+		POP		EAX
+		RET
+
+_print_err:	; void print_err(char *);
+		PUSH		EAX
+		PUSH		ECX
+		MOV		EAX,9
+		MOV		ECX,[ESP+12]
+		INT		0x30
+		POP		ECX
 		POP		EAX
 		RET

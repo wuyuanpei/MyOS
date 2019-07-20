@@ -20,7 +20,7 @@ static struct SHEET *sht_window;
 static unsigned char *buf_window;
 // Static function declarations
 static void new_line(char arg);
-static void new_char(char ch);
+static void new_char(char ch, int i);
 static void parse_cmd(void);
 static char str_cmp(char *test, char *target);
 static void str_uppercase(char *str);
@@ -34,7 +34,7 @@ static int run_program(char *ext);
 static void cmd_cls(void){
 	int i;
 	if(argc != 1){
-		print_string("Usage: c/clear/cls");
+		print_error("Usage: c/clear/cls");
 		return;
 	}
     for (i = 0; i < cols; i++) {
@@ -53,7 +53,7 @@ static void cmd_mem(void) {
 	int sbrk = mm_sbrk();
 	int usage = (use * 10000 + (total >> 1)) / total;//Round
 	if(argc != 1){
-		print_string("Usage: m/mem/memory");
+		print_error("Usage: m/mem/memory");
 		return;
 	}
 	sprintf(buf,"mem  :  %4d / %4d MB       usage:  %2d.%02d %%", use, total, usage / 100, usage % 100);
@@ -70,7 +70,7 @@ static void cmd_ls(void) {
 	char buf[30];
 	int x, y;
 	if(argc != 1){
-		print_string("Usage: ls/dir");
+		print_error("Usage: ls/dir");
 		return;
 	}
 	for (x = 0; x < 224; x++) { // At most 224 files
@@ -109,7 +109,7 @@ static void cmd_type(void) {
 	struct FILEINFO *finfo = (struct FILEINFO *) (ADR_DISK_IMG + 0x002600);
 	// Cmd format not correct
 	if(argc != 2){
-		print_string("Usage: cat/type [filename]");
+		print_error("Usage: cat/type [filename]");
 		return;
 	}
 	// Turn all characters into uppercase
@@ -162,11 +162,11 @@ static void cmd_type(void) {
 						}
 						if((*(p+i)) == 0x09) { // Tab
 							do{
-								new_char(' ');
+								new_char(' ', 0);
 							} while((x % 4) != 0);
 							continue;
 						}
-						new_char(*(p+i));
+						new_char(*(p+i), 0);
 					}
 					mm_free(fat);
 					mm_free(p);
@@ -175,7 +175,7 @@ static void cmd_type(void) {
 			}
 		}
 	}
-	print_string("File Not Found");
+	print_error("File Not Found");
 }
 
 static char *buildin_cmd[BUILDIN_CMD_NUM] = {
@@ -215,15 +215,18 @@ static void new_line(char arg){
 	
 }
 
-// Draw the char and move to a new position
-static void new_char(char ch){
+// Draw the char and move to a new position: if i == 1, draw the character in emphasized mode
+static void new_char(char ch, int i){
 	// Set the cursor black
 	draw_rect(buf_window, width, COL8_BLACK, 3 + 8 * xc, 22 + 16 * yc, 10 + 8 * xc, 37 + 16 * yc);
 	sheet_refresh(sht_window, 3 + 8 * xc, 22 + 16 * yc, 11 + 8 * xc, 38 + 16 * yc, 0);
 	// Cursor moves to the next position
 	xc++;
 	// Draw the character at (x,y)
-	draw_char(buf_window, width, COL8_GREEN, 3 + 8 * x, 22 + 16 * y, hankaku + ch * 16);
+	if(i == 1)
+		draw_char(buf_window, width, COL8_RED, 3 + 8 * x, 22 + 16 * y, hankaku + ch * 16);
+	else
+		draw_char(buf_window, width, COL8_GREEN, 3 + 8 * x, 22 + 16 * y, hankaku + ch * 16);
 	sheet_refresh(sht_window, 3 + 8 * x, 22 + 16 * y, 11 + 8 * x, 38 + 16 * y, 0);
 	// Next position
 	x++;
@@ -237,7 +240,15 @@ static void new_char(char ch){
 void print_string(char *str) {
 	new_line(0);
 	while(*str){
-		new_char(*(str++));
+		new_char(*(str++), 0);
+	}
+}
+
+// New a line and draw the error information in emphasized mode
+void print_error(char *err) {
+	new_line(0);
+	while(*err){
+		new_char(*(err++), 1);
 	}
 }
 
@@ -327,6 +338,7 @@ static void restore(void) {
  * Return 0 if program not found, else return 1
  */
 int program_addr = 0; // The starting address of the program's data section
+int malloc_addr; // Program's starting address of .space
 static int run_program(char *ext) {
 	// Every time this command is run, we decompress FAT one time and copy
 	// the file data into p
@@ -335,7 +347,8 @@ static int run_program(char *ext) {
 	char buf2[13] = {0}; //a.ext
 	char *p, *q;
 	int i, j;
-	int segsiz, datsiz, esp, dathrb; // Program's segment size, data size, initial esp, and data starting address in hrb
+	// Program's segment size, data size, initial esp, and data starting address in hrb
+	int segsiz, datsiz, esp, dathrb; 
 	struct FILEINFO *finfo = (struct FILEINFO *) (ADR_DISK_IMG + 0x002600);
 	struct SEGMENT_DESCRIPTOR *gdt = (struct SEGMENT_DESCRIPTOR *) ADR_GDT;
 	// Iterate all the entries
@@ -386,6 +399,7 @@ static int run_program(char *ext) {
 						esp    = *((int *) (p + 0x000c));
 						datsiz = *((int *) (p + 0x0010));
 						dathrb = *((int *) (p + 0x0014));
+						malloc_addr = *((int *) (p + 0x0020));
 						p[0] = 0xe8;
 						p[1] = 0x16;
 						p[2] = 0x00;
@@ -412,10 +426,11 @@ static int run_program(char *ext) {
 						start_app(0, 1003 * 8, esp, 1004 * 8, &(task_now()->tss.esp0));
 						// The app ends
 						program_addr = 0;
+						malloc_addr = 0;
 						// Free the memory
 						mm_free(q);
 					}else{
-						print_string("Illegal Executable File");
+						print_error("Illegal Executable File");
 					}
 					// Run the program
 					mm_free(fat);
@@ -442,7 +457,7 @@ static void run_cmd(void) {
 		}
     }
 	if(run_program("HRB") == 0)
-		print_string("Command Not Found");
+		print_error("Command Not Found");
 }
 
 // CMD task Main method
@@ -545,7 +560,7 @@ void task_console_main(void)
 		// If the input length is in the buffer range
 		if(index < MAX_CMD_BUF - 1){
 			// Display the character
-			new_char(ch);
+			new_char(ch, 0);
 			// Put the character in the cmd_buf
 			cmd_buf[index++] = ch;
 		}

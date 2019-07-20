@@ -74,6 +74,8 @@ unsigned int memtest_sub(unsigned int start, unsigned int end);
 void farjmp(int eip, int cs);
 // Run an application
 void start_app(int eip, int cs, int esp, int ds, int *tss_esp0);
+// End an application
+void end_app(void);
 // API functions
 void api_call(void);
 
@@ -148,7 +150,7 @@ void sys_error(char * error_info);
 /* Print out debug information */
 void sys_debug(char * debug_info);
 /* API selection */
-int *api_selection(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int eax);
+int* api_selection(unsigned int edi, unsigned int esi, unsigned int ebp, unsigned int esp, unsigned int ebx, unsigned int edx, unsigned int ecx, unsigned int eax);
 
 /* mouse.c */
 /* Mouse Decode Struct*/

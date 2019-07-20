@@ -31,6 +31,7 @@ void init_gdtidt(void)
 	// the segment number of the function << 3, access right);
 	// AR_INTGATE32 (0x8e): the interrupt is effective
 	set_gatedesc(idt + 0x00, (int) asm_inthandler00, 2 << 3, AR_INTGATE32);
+	set_gatedesc(idt + 0x06, (int) asm_inthandler06, 2 << 3, AR_INTGATE32);
 	set_gatedesc(idt + 0x0c, (int) asm_inthandler0c, 2 << 3, AR_INTGATE32);
 	set_gatedesc(idt + 0x0d, (int) asm_inthandler0d, 2 << 3, AR_INTGATE32);
 	set_gatedesc(idt + 0x20, (int) asm_inthandler20, 2 << 3, AR_INTGATE32);
@@ -71,6 +72,12 @@ int inthandler00(int *esp)
 	return application_exception(esp, "INT 00: Divide By Zero Exception");
 }
 
+// Dealing with illegal instruction exception
+int inthandler06(int *esp)
+{
+	return application_exception(esp, "INT 06: Illegal Instruction Exception");
+}
+
 // Dealing with protected exception
 int inthandler0d(int *esp)
 {
@@ -87,7 +94,7 @@ int inthandler0c(int *esp)
 static int application_exception(int *esp, char *exception)
 {
 	char buf[50];
-	print_string(exception);
+	print_error(exception);
 	sprintf(buf,"EAX 0x%08x; EBX 0x%08x; ECX 0x%08x",esp[7],esp[4],esp[6]);
 	print_string(buf);
 	sprintf(buf,"EDX 0x%08x; EDI 0x%08x; ESI 0x%08x",esp[5],esp[0],esp[1]);

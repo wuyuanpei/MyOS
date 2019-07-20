@@ -94,13 +94,13 @@ int inthandler0c(int *esp)
 static int application_exception(int *esp, char *exception)
 {
 	char buf[50];
-	print_string(exception);
+	print_error(exception);
 	sprintf(buf,"EAX 0x%08x; EBX 0x%08x; ECX 0x%08x",esp[7],esp[4],esp[6]);
-	print_string(buf);
+	print_error(buf);
 	sprintf(buf,"EDX 0x%08x; EDI 0x%08x; ESI 0x%08x",esp[5],esp[0],esp[1]);
-	print_string(buf);
+	print_error(buf);
 	sprintf(buf,"ESP 0x%08x; EBP 0x%08x; EIP 0x%08x",esp[14],esp[2],esp[11]);
-	print_string(buf);
+	print_error(buf);
 	return &(task_now()->tss.esp0); // When return tss.esp0, kill the application
 }
 
