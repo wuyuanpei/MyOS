@@ -20,6 +20,7 @@
 		EXTERN	_inthandler20, _inthandler21, _inthandler2c
 		EXTERN	_inthandler0d,_inthandler0c,_inthandler00,_inthandler06
 		EXTERN  _api_selection
+		EXTERN	_try_close_window
 		
 [SECTION .text]
 
@@ -320,7 +321,7 @@ _api_call:	; API funtion as INT 0x30
 		CALL		_api_selection
 
 		CMP		EAX,0		; When EAX is not 0, application ends
-		JNE		end_app
+		JNE		_end_app
 		ADD		ESP,32
 		POPAD
 		POP		ES

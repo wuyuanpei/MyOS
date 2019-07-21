@@ -339,6 +339,7 @@ static void restore(void) {
  */
 int program_addr = 0; // The starting address of the program's data section
 int malloc_addr; // Program's starting address of .space
+struct SHEET *sheet_created; // If sheet_created is 0, no window created by this application so far
 static int run_program(char *ext) {
 	// Every time this command is run, we decompress FAT one time and copy
 	// the file data into p
@@ -422,11 +423,17 @@ static int run_program(char *ext) {
 						}
 						// Run the app
 						program_addr = (int)q;
+						sheet_created = 0;
 						// In application mode, we have to store segment address and esp of OS in TSS
 						start_app(0, 1003 * 8, esp, 1004 * 8, &(task_now()->tss.esp0));
 						// The app ends
 						program_addr = 0;
 						malloc_addr = 0;
+						if(sheet_created){
+							sheet_free(sheet_created);
+							mm_free(sheet_created->buf);
+							sheet_created = 0;
+						}
 						// Free the memory
 						mm_free(q);
 					}else{
@@ -475,7 +482,7 @@ void task_console_main(void)
 	make_window(buf_window, width, height, "Command", 1);
 	// Black background
 	draw_rect(buf_window, width, COL8_BLACK, 3, 22, width - 4, height - 4); // Leave margin
-	sheet_updown(sht_window, 1);
+	sheet_updown(sht_window, 0xffff);
 	sheet_slide(sht_window, 5, 70); // Position on the screen
 	// Timer for the cursor (Green->Black, B->G)
 	start_timing(1, 50);

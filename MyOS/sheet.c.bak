@@ -119,7 +119,7 @@ static void sheet_refreshsub(int vx0, int vy0, int vx1, int vy1, int h0, int h1)
 	}
 }
 
-/* Set height for a sheet: if height = 0xffff, set the height just below the mouse height*/
+/* Set height for a sheet: if height = 0xff, set the height just below the mouse height*/
 void sheet_updown(struct SHEET *sht, int height)
 {
 	struct SHTCTL *ctl = (struct SHTCTL *)ADR_SHTCTL;

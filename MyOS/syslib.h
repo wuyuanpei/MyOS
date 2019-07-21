@@ -34,3 +34,5 @@ void *space(void); // Return the starting address of .space segment
 void draw_pt(SHEET sheet, COLOR color, int x, int y); // Draw a point on the window
 void draw_line(SHEET sheet, COLOR color, int xi, int yi, int xf, int yf); // Draw a line on the window
 void print_err(char *); // Print an error string
+void close_window(SHEET sheet); // Close the window
+void scan_str(char *buf, int length); // Wait for a string input, with maximum buffer length; only return when the buffer is full or enter is typed

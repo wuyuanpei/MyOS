@@ -3,8 +3,8 @@
 [BITS 32]
 [FILE "syslib_asm.nas"]
 		;GLOBAL	_end
-		GLOBAL	_print_int, _print_str, _print_err
-		GLOBAL  _new_window, _draw_str, _draw_rec, _draw_pt, _draw_line
+		GLOBAL	_print_int, _print_str, _print_err, _scan_str
+		GLOBAL  _new_window, _draw_str, _draw_rec, _draw_pt, _draw_line, _close_window
 		GLOBAL  _space
 
 [SECTION .text]
@@ -156,5 +156,28 @@ _print_err:	; void print_err(char *);
 		MOV		ECX,[ESP+12]
 		INT		0x30
 		POP		ECX
+		POP		EAX
+		RET
+
+_close_window:	; void close_window(SHEET sheet);
+		PUSH		EAX
+		PUSH		EBX
+		MOV		EAX,10
+		MOV		EBX,[ESP+12]
+		INT		0x30
+		POP		EBX
+		POP		EAX
+		RET
+
+_scan_str:	; void scan_str(char *buf, int length);
+		PUSH		EAX
+		PUSH		EBX
+		PUSH		ECX
+		MOV		EAX,11
+		MOV		EBX,[ESP+16]
+		MOV		ECX,[ESP+20]
+		INT		0x30
+		POP		ECX
+		POP		EBX
 		POP		EAX
 		RET

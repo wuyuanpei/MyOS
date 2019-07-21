@@ -34,7 +34,7 @@ static int run_program(char *ext);
 static void cmd_cls(void){
 	int i;
 	if(argc != 1){
-		print_string("Usage: c/clear/cls");
+		print_error("Usage: c/clear/cls");
 		return;
 	}
     for (i = 0; i < cols; i++) {
@@ -53,7 +53,7 @@ static void cmd_mem(void) {
 	int sbrk = mm_sbrk();
 	int usage = (use * 10000 + (total >> 1)) / total;//Round
 	if(argc != 1){
-		print_string("Usage: m/mem/memory");
+		print_error("Usage: m/mem/memory");
 		return;
 	}
 	sprintf(buf,"mem  :  %4d / %4d MB       usage:  %2d.%02d %%", use, total, usage / 100, usage % 100);
@@ -70,7 +70,7 @@ static void cmd_ls(void) {
 	char buf[30];
 	int x, y;
 	if(argc != 1){
-		print_string("Usage: ls/dir");
+		print_error("Usage: ls/dir");
 		return;
 	}
 	for (x = 0; x < 224; x++) { // At most 224 files
@@ -109,7 +109,7 @@ static void cmd_type(void) {
 	struct FILEINFO *finfo = (struct FILEINFO *) (ADR_DISK_IMG + 0x002600);
 	// Cmd format not correct
 	if(argc != 2){
-		print_string("Usage: cat/type [filename]");
+		print_error("Usage: cat/type [filename]");
 		return;
 	}
 	// Turn all characters into uppercase
@@ -339,6 +339,7 @@ static void restore(void) {
  */
 int program_addr = 0; // The starting address of the program's data section
 int malloc_addr; // Program's starting address of .space
+struct SHEET *sheet_created; // If sheet_created is 0, no window created by this application so far
 static int run_program(char *ext) {
 	// Every time this command is run, we decompress FAT one time and copy
 	// the file data into p
@@ -422,11 +423,20 @@ static int run_program(char *ext) {
 						}
 						// Run the app
 						program_addr = (int)q;
+						sheet_created = 0;
 						// In application mode, we have to store segment address and esp of OS in TSS
 						start_app(0, 1003 * 8, esp, 1004 * 8, &(task_now()->tss.esp0));
 						// The app ends
 						program_addr = 0;
 						malloc_addr = 0;
+						char buf[30];
+						sprintf(buf,"%x",sheet_created);
+						sys_debug(buf);
+						if(sheet_created){
+							sheet_free(sheet_created);
+							mm_free(sheet_created->buf);
+							sheet_created = 0;
+						}
 						// Free the memory
 						mm_free(q);
 					}else{
@@ -475,7 +485,7 @@ void task_console_main(void)
 	make_window(buf_window, width, height, "Command", 1);
 	// Black background
 	draw_rect(buf_window, width, COL8_BLACK, 3, 22, width - 4, height - 4); // Leave margin
-	sheet_updown(sht_window, 1);
+	sheet_updown(sht_window, 0xffff);
 	sheet_slide(sht_window, 5, 70); // Position on the screen
 	// Timer for the cursor (Green->Black, B->G)
 	start_timing(1, 50);
