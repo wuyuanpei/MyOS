@@ -9,6 +9,8 @@ void HariMain(void) {
 		y = (rand() % 75) + 22;
 		draw_pt(s, COL_YELLOW, x, y);
 	}
+	draw_str(s, COL_WHITE, "Hello", 20, 20);
+	draw_line(s, COL_RED, 16,29,85,90);
 	char buf[2];
 	scan_str(buf, 2);
 	print_str(buf);
