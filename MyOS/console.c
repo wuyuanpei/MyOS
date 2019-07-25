@@ -482,7 +482,8 @@ void task_console_main(void)
 	make_window(buf_window, width, height, "Command", 1);
 	// Black background
 	draw_rect(buf_window, width, COL8_BLACK, 3, 22, width - 4, height - 4); // Leave margin
-	sheet_updown(sht_window, 0xffff);
+	struct SHTCTL *shtctl = (struct SHTCTL *)ADR_SHTCTL;
+	sheet_updown(sht_window, shtctl->top);
 	sheet_slide(sht_window, 5, 70); // Position on the screen
 	// Timer for the cursor (Green->Black, B->G)
 	start_timing(1, 50);

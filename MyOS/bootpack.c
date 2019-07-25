@@ -17,8 +17,9 @@ void task_b_main(void){
 	unsigned char *buf_window = mm_malloc(150*50); // window size
 	sheet_setbuf(sht_window, buf_window, 150, 50, 0xff); // 0xff for col_inv
 	make_window(buf_window, 150, 50, "System Timer", 0);
-	sheet_updown(sht_window, 0xffff);
-	sheet_slide(sht_window, 475, 30);
+	struct SHTCTL *shtctl = (struct SHTCTL *)ADR_SHTCTL;
+	sheet_updown(sht_window, shtctl->top);
+	sheet_slide(sht_window, 100, 100);
 	start_timing(1,1);
 	while(1){
 		draw_rect(buf_window, 150, COL8_GRAY, 25, 25, 125, 40);
@@ -166,6 +167,11 @@ void HariMain(void)
 				io_sti();
 				print_error("Program Terminated");
 				continue; // Do not send 'c' to the application
+			}
+			// F1 is reserved for turning the lowest window to the highest
+			struct SHTCTL *shtctl = (struct SHTCTL *)ADR_SHTCTL;
+			if(data == 0x3b && shtctl->top > 2) {
+				sheet_updown(shtctl->sheets[1], shtctl->top - 1);
 			}
 			// Keyboard input will forward call the focused task
 			fifo_put(&task_focused->fifo, data);

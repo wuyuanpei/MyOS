@@ -103,7 +103,8 @@ static int *api_new_window(int *ret, int width, int height, int x, int y, char *
 	buf_window = mm_malloc(width * height); // window size
 	sheet_setbuf(sht_window, buf_window, width, height, 0xff); // 0xff for col_inv
 	make_window(buf_window, width, height, title + program_addr, 0);
-	sheet_updown(sht_window, 0xffff);
+	struct SHTCTL *shtctl = (struct SHTCTL *)ADR_SHTCTL;
+	sheet_updown(sht_window, shtctl->top);
 	sheet_slide(sht_window, x, y); // Position on the screen
 	sheet_created = sht_window; // Set the tag
 	// Return the sheet handler
