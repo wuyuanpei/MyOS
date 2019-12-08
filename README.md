@@ -15,6 +15,10 @@ Run the operating system in QEMU:
 '''
 make run
 '''
+Clear files:
+'''
+make clean
+'''
 ## Notes
 Other tools provided in this repo include
 BZ
