@@ -1,0 +1,357 @@
+     1 00000000                                 ; naskfunc
+     2 00000000                                 ; TAB=4
+     3 00000000                                 
+     4 00000000                                 [FORMAT "WCOFF"]	
+     5 00000000                                 [INSTRSET "i486p"]				; i486 architecture
+     6 00000000                                 [BITS 32]						; 32 bit program
+     7 00000000                                 [FILE "naskfunc.nas"]			; File name
+     8 00000000                                 		; Global Symbols
+     9 00000000                                 		GLOBAL	_io_hlt, _io_cli, _io_sti, _io_stihlt
+    10 00000000                                 		GLOBAL	_io_in8,  _io_in16,  _io_in32
+    11 00000000                                 		GLOBAL	_io_out8, _io_out16, _io_out32
+    12 00000000                                 		GLOBAL	_io_load_eflags, _io_store_eflags
+    13 00000000                                 		GLOBAL	_load_gdtr, _load_idtr, _load_tr
+    14 00000000                                 		GLOBAL	_load_cr0, _store_cr0
+    15 00000000                                 		GLOBAL	_asm_inthandler20, _asm_inthandler21, _asm_inthandler2c
+    16 00000000                                 		GLOBAL	_asm_inthandler0d,_asm_inthandler0c,_asm_inthandler00,_asm_inthandler06
+    17 00000000                                 		GLOBAL  _memtest_sub
+    18 00000000                                 		GLOBAL  _farjmp, _start_app, _end_app
+    19 00000000                                 		GLOBAL  _api_call ;API
+    20 00000000                                 		EXTERN	_inthandler20, _inthandler21, _inthandler2c
+    21 00000000                                 		EXTERN	_inthandler0d,_inthandler0c,_inthandler00,_inthandler06
+    22 00000000                                 		EXTERN  _api_selection
+    23 00000000                                 		
+    24                                          [SECTION .text]
+    25 00000000                                 
+    26 00000000                                 _io_hlt:	; void io_hlt(void);
+    27 00000000 F4                              		HLT
+    28 00000001 C3                              		RET
+    29 00000002                                 
+    30 00000002                                 _io_cli:	; void io_cli(void);
+    31 00000002 FA                              		CLI
+    32 00000003 C3                              		RET
+    33 00000004                                 
+    34 00000004                                 _io_sti:	; void io_sti(void);
+    35 00000004 FB                              		STI
+    36 00000005 C3                              		RET
+    37 00000006                                 
+    38 00000006                                 _io_stihlt:	; void io_stihlt(void);
+    39 00000006 FB                              		STI
+    40 00000007 F4                              		HLT
+    41 00000008 C3                              		RET
+    42 00000009                                 
+    43 00000009                                 _io_in8:	; int io_in8(int port);
+    44 00000009 8B 54 24 04                     		MOV		EDX,[ESP+4]		; port
+    45 0000000D B8 00000000                     		MOV		EAX,0
+    46 00000012 EC                              		IN		AL,DX
+    47 00000013 C3                              		RET
+    48 00000014                                 
+    49 00000014                                 _io_in16:	; int io_in16(int port);
+    50 00000014 8B 54 24 04                     		MOV		EDX,[ESP+4]		; port
+    51 00000018 B8 00000000                     		MOV		EAX,0
+    52 0000001D 66 ED                           		IN		AX,DX
+    53 0000001F C3                              		RET
+    54 00000020                                 
+    55 00000020                                 _io_in32:	; int io_in32(int port);
+    56 00000020 8B 54 24 04                     		MOV		EDX,[ESP+4]		; port
+    57 00000024 ED                              		IN		EAX,DX
+    58 00000025 C3                              		RET
+    59 00000026                                 
+    60 00000026                                 _io_out8:	; void io_out8(int port, int data);
+    61 00000026 8B 54 24 04                     		MOV		EDX,[ESP+4]		; port
+    62 0000002A 8A 44 24 08                     		MOV		AL,[ESP+8]		; data
+    63 0000002E EE                              		OUT		DX,AL
+    64 0000002F C3                              		RET
+    65 00000030                                 
+    66 00000030                                 _io_out16:	; void io_out16(int port, int data);
+    67 00000030 8B 54 24 04                     		MOV		EDX,[ESP+4]		; port
+    68 00000034 8B 44 24 08                     		MOV		EAX,[ESP+8]		; data
+    69 00000038 66 EF                           		OUT		DX,AX
+    70 0000003A C3                              		RET
+    71 0000003B                                 
+    72 0000003B                                 _io_out32:	; void io_out32(int port, int data);
+    73 0000003B 8B 54 24 04                     		MOV		EDX,[ESP+4]		; port
+    74 0000003F 8B 44 24 08                     		MOV		EAX,[ESP+8]		; data
+    75 00000043 EF                              		OUT		DX,EAX
+    76 00000044 C3                              		RET
+    77 00000045                                 
+    78 00000045                                 _io_load_eflags:	; int io_load_eflags(void);
+    79 00000045 9C                              		PUSHFD		; PUSH EFLAGS 
+    80 00000046 58                              		POP		EAX
+    81 00000047 C3                              		RET
+    82 00000048                                 
+    83 00000048                                 _io_store_eflags:	; void io_store_eflags(int eflags);
+    84 00000048 8B 44 24 04                     		MOV		EAX,[ESP+4]
+    85 0000004C 50                              		PUSH	EAX
+    86 0000004D 9D                              		POPFD		; POP EFLAGS 
+    87 0000004E C3                              		RET
+    88 0000004F                                 		
+    89 0000004F                                 _load_gdtr:		; void load_gdtr(int limit, int addr);
+    90 0000004F 66 8B 44 24 04                  		MOV		AX,[ESP+4]		; limit
+    91 00000054 66 89 44 24 06                  		MOV		[ESP+6],AX
+    92 00000059 0F 01 54 24 06                  		LGDT	[ESP+6]
+    93 0000005E C3                              		RET
+    94 0000005F                                 
+    95 0000005F                                 _load_idtr:		; void load_idtr(int limit, int addr);
+    96 0000005F 66 8B 44 24 04                  		MOV		AX,[ESP+4]		; limit
+    97 00000064 66 89 44 24 06                  		MOV		[ESP+6],AX
+    98 00000069 0F 01 5C 24 06                  		LIDT	[ESP+6]
+    99 0000006E C3                              		RET
+   100 0000006F                                 
+   101 0000006F                                 _load_tr:		; void load_tr(int tr);
+   102 0000006F 0F 00 5C 24 04                  		LTR		[ESP+4]			; tr
+   103 00000074 C3                              		RET
+   104 00000075                                 
+   105 00000075                                 _asm_inthandler20:
+   106 00000075 06                              		PUSH	ES
+   107 00000076 1E                              		PUSH	DS
+   108 00000077 60                              		PUSHAD
+   109 00000078 89 E0                           		MOV		EAX,ESP
+   110 0000007A 50                              		PUSH	EAX
+   111 0000007B 66 8C D0                        		MOV		AX,SS
+   112 0000007E 8E D8                           		MOV		DS,AX
+   113 00000080 8E C0                           		MOV		ES,AX
+   114 00000082 E8 [00000000]                   		CALL	_inthandler20
+   115 00000087 58                              		POP		EAX
+   116 00000088 61                              		POPAD
+   117 00000089 1F                              		POP		DS
+   118 0000008A 07                              		POP		ES
+   119 0000008B CF                              		IRETD
+   120 0000008C                                 
+   121 0000008C                                 _asm_inthandler21:
+   122 0000008C 06                              		PUSH	ES
+   123 0000008D 1E                              		PUSH	DS
+   124 0000008E 60                              		PUSHAD
+   125 0000008F 89 E0                           		MOV		EAX,ESP
+   126 00000091 50                              		PUSH	EAX
+   127 00000092 66 8C D0                        		MOV		AX,SS
+   128 00000095 8E D8                           		MOV		DS,AX
+   129 00000097 8E C0                           		MOV		ES,AX
+   130 00000099 E8 [00000000]                   		CALL	_inthandler21
+   131 0000009E 58                              		POP		EAX
+   132 0000009F 61                              		POPAD
+   133 000000A0 1F                              		POP		DS
+   134 000000A1 07                              		POP		ES
+   135 000000A2 CF                              		IRETD
+   136 000000A3                                 
+   137 000000A3                                 _asm_inthandler2c:
+   138 000000A3 06                              		PUSH	ES
+   139 000000A4 1E                              		PUSH	DS
+   140 000000A5 60                              		PUSHAD
+   141 000000A6 89 E0                           		MOV		EAX,ESP
+   142 000000A8 50                              		PUSH	EAX
+   143 000000A9 66 8C D0                        		MOV		AX,SS
+   144 000000AC 8E D8                           		MOV		DS,AX
+   145 000000AE 8E C0                           		MOV		ES,AX
+   146 000000B0 E8 [00000000]                   		CALL	_inthandler2c
+   147 000000B5 58                              		POP		EAX
+   148 000000B6 61                              		POPAD
+   149 000000B7 1F                              		POP		DS
+   150 000000B8 07                              		POP		ES
+   151 000000B9 CF                              		IRETD
+   152 000000BA                                 
+   153 000000BA                                 _asm_inthandler00:	; divide by zero exception handler
+   154 000000BA FB                              		STI
+   155 000000BB 06                              		PUSH	ES
+   156 000000BC 1E                              		PUSH	DS
+   157 000000BD 60                              		PUSHAD
+   158 000000BE 89 E0                           		MOV		EAX,ESP
+   159 000000C0 50                              		PUSH	EAX
+   160 000000C1 66 8C D0                        		MOV		AX,SS
+   161 000000C4 8E D8                           		MOV		DS,AX
+   162 000000C6 8E C0                           		MOV		ES,AX
+   163 000000C8 E8 [00000000]                   		CALL	_inthandler00
+   164 000000CD 83 F8 00                        		CMP		EAX,0		; if non-zero, kill the application
+   165 000000D0 0F 85 000000E0                  		JNE		_end_app
+   166 000000D6 58                              		POP		EAX
+   167 000000D7 61                              		POPAD
+   168 000000D8 1F                              		POP		DS
+   169 000000D9 07                              		POP		ES
+   170 000000DA 83 C4 04                        		ADD		ESP,4		; special for INT 0x0
+   171 000000DD CF                              		IRETD
+   172 000000DE                                 
+   173 000000DE                                 _asm_inthandler06:	; illegal instruction exception handler
+   174 000000DE FB                              		STI
+   175 000000DF 06                              		PUSH	ES
+   176 000000E0 1E                              		PUSH	DS
+   177 000000E1 60                              		PUSHAD
+   178 000000E2 89 E0                           		MOV		EAX,ESP
+   179 000000E4 50                              		PUSH	EAX
+   180 000000E5 66 8C D0                        		MOV		AX,SS
+   181 000000E8 8E D8                           		MOV		DS,AX
+   182 000000EA 8E C0                           		MOV		ES,AX
+   183 000000EC E8 [00000000]                   		CALL	_inthandler06
+   184 000000F1 83 F8 00                        		CMP		EAX,0		; if non-zero, kill the application
+   185 000000F4 0F 85 000000BC                  		JNE		_end_app
+   186 000000FA 58                              		POP		EAX
+   187 000000FB 61                              		POPAD
+   188 000000FC 1F                              		POP		DS
+   189 000000FD 07                              		POP		ES
+   190 000000FE 83 C4 04                        		ADD		ESP,4		; special for INT 0x06
+   191 00000101 CF                              		IRETD
+   192 00000102                                 
+   193 00000102                                 _asm_inthandler0d:	; protected exception handler
+   194 00000102 FB                              		STI
+   195 00000103 06                              		PUSH	ES
+   196 00000104 1E                              		PUSH	DS
+   197 00000105 60                              		PUSHAD
+   198 00000106 89 E0                           		MOV		EAX,ESP
+   199 00000108 50                              		PUSH	EAX
+   200 00000109 66 8C D0                        		MOV		AX,SS
+   201 0000010C 8E D8                           		MOV		DS,AX
+   202 0000010E 8E C0                           		MOV		ES,AX
+   203 00000110 E8 [00000000]                   		CALL	_inthandler0d
+   204 00000115 83 F8 00                        		CMP		EAX,0		; if non-zero, kill the application
+   205 00000118 0F 85 00000098                  		JNE		_end_app
+   206 0000011E 58                              		POP		EAX
+   207 0000011F 61                              		POPAD
+   208 00000120 1F                              		POP		DS
+   209 00000121 07                              		POP		ES
+   210 00000122 83 C4 04                        		ADD		ESP,4		; special for INT 0x0d
+   211 00000125 CF                              		IRETD
+   212 00000126                                 
+   213 00000126                                 _asm_inthandler0c:	; stack exception handler
+   214 00000126 FB                              		STI
+   215 00000127 06                              		PUSH	ES
+   216 00000128 1E                              		PUSH	DS
+   217 00000129 60                              		PUSHAD
+   218 0000012A 89 E0                           		MOV		EAX,ESP
+   219 0000012C 50                              		PUSH	EAX
+   220 0000012D 66 8C D0                        		MOV		AX,SS
+   221 00000130 8E D8                           		MOV		DS,AX
+   222 00000132 8E C0                           		MOV		ES,AX
+   223 00000134 E8 [00000000]                   		CALL	_inthandler0c
+   224 00000139 83 F8 00                        		CMP		EAX,0		; if non-zero, kill the application
+   225 0000013C 75 78                           		JNE		_end_app
+   226 0000013E 58                              		POP		EAX
+   227 0000013F 61                              		POPAD
+   228 00000140 1F                              		POP		DS
+   229 00000141 07                              		POP		ES
+   230 00000142 83 C4 04                        		ADD		ESP,4		; special for INT 0x0c
+   231 00000145 CF                              		IRETD
+   232 00000146                                 		
+   233 00000146                                 _load_cr0:		; int load_cr0(void);
+   234 00000146 0F 20 C0                        		MOV		EAX,CR0
+   235 00000149 C3                              		RET
+   236 0000014A                                 
+   237 0000014A                                 _store_cr0:		; void store_cr0(int cr0);
+   238 0000014A 8B 44 24 04                     		MOV		EAX,[ESP+4]
+   239 0000014E 0F 22 C0                        		MOV		CR0,EAX
+   240 00000151 C3                              		RET
+   241 00000152                                 		
+   242 00000152                                 ;/* Go through the memory to test its size <C_Version> */
+   243 00000152                                 ;unsigned int memtest_sub(unsigned int start, unsigned int end)
+   244 00000152                                 ;{
+   245 00000152                                 	;/* a: 1010 5: 0101 */
+   246 00000152                                 	;unsigned int i, *p, old, pat0 = 0xaa55aa55, pat1 = 0x55aa55aa;
+   247 00000152                                 	;/* Go through the memory in a MEMORY_STEP_SIZE block */
+   248 00000152                                 	;for (i = start; i <= end; i += MEMORY_STEP_SIZE) {
+   249 00000152                                 		;p = (unsigned int *) (i + MEMORY_STEP_SIZE - 4); // The end of the block
+   250 00000152                                 		;old = *p;			/* Store the current value */
+   251 00000152                                 		;*p = pat0;			/* Write pat0 */
+   252 00000152                                 		;*p ^= 0xffffffff;	/* ~pat0 */
+   253 00000152                                 		;if (*p != pat1) {	/* Test pat0: not valid */
+   254 00000152                                 ;not_memory:
+   255 00000152                                 			;*p = old;		/* Restore old */
+   256 00000152                                 			;break;
+   257 00000152                                 		;}
+   258 00000152                                 		;*p ^= 0xffffffff;	/* ~pat0 */
+   259 00000152                                 		;if (*p != pat0) {	/* Test pat0: not valid */
+   260 00000152                                 			;goto not_memory;
+   261 00000152                                 		;}
+   262 00000152                                 		;*p = old;			/* Restore pat0 */
+   263 00000152                                 	;}
+   264 00000152                                 	;return i;
+   265 00000152                                 ;}
+   266 00000152                                 
+   267 00000152                                 ; <ASM_Version>
+   268 00000152                                 ; The step size for going through the memory
+   269 00000152                                 
+   270  = 00000400                              MEMORY_STEP_SIZE	EQU		0x400 ; 1 KB
+   271 00000152                                 
+   272 00000152                                 _memtest_sub:	;unsigned int memtest_sub(unsigned int start, unsigned int end);
+   273 00000152 57                              		PUSH	EDI						; We need EBX, ESI, EDI
+   274 00000153 56                              		PUSH	ESI
+   275 00000154 53                              		PUSH	EBX
+   276 00000155 BE AA55AA55                     		MOV		ESI,0xaa55aa55			; pat0 = 0xaa55aa55;
+   277 0000015A BF 55AA55AA                     		MOV		EDI,0x55aa55aa			; pat1 = 0x55aa55aa;
+   278 0000015F 8B 44 24 10                     		MOV		EAX,[ESP+12+4]			; i = start;
+   279 00000163                                 mts_loop:
+   280 00000163 89 C3                           		MOV		EBX,EAX
+   281 00000165 81 C3 000003FC                  		ADD		EBX,MEMORY_STEP_SIZE-4	; p = i + MEMORY_STEP_SIZE - 4;
+   282 0000016B 8B 13                           		MOV		EDX,[EBX]				; old = *p;
+   283 0000016D 89 33                           		MOV		[EBX],ESI				; *p = pat0;
+   284 0000016F 83 33 FF                        		XOR		DWORD [EBX],0xffffffff	; *p ^= 0xffffffff;
+   285 00000172 3B 3B                           		CMP		EDI,[EBX]				; if (*p != pat1) goto fin;
+   286 00000174 75 18                           		JNE		mts_fin
+   287 00000176 83 33 FF                        		XOR		DWORD [EBX],0xffffffff	; *p ^= 0xffffffff;
+   288 00000179 3B 33                           		CMP		ESI,[EBX]				; if (*p != pat0) goto fin;
+   289 0000017B 75 11                           		JNE		mts_fin
+   290 0000017D 89 13                           		MOV		[EBX],EDX				; *p = old;
+   291 0000017F 05 00000400                     		ADD		EAX,MEMORY_STEP_SIZE	; i += MEMORY_STEP_SIZE;
+   292 00000184 3B 44 24 14                     		CMP		EAX,[ESP+12+8]			; if (i <= end) goto mts_loop;
+   293 00000188 76 D9                           		JBE		mts_loop
+   294 0000018A 5B                              		POP		EBX
+   295 0000018B 5E                              		POP		ESI
+   296 0000018C 5F                              		POP		EDI
+   297 0000018D C3                              		RET
+   298 0000018E                                 mts_fin:
+   299 0000018E 89 13                           		MOV		[EBX],EDX				; *p = old;
+   300 00000190 5B                              		POP		EBX
+   301 00000191 5E                              		POP		ESI
+   302 00000192 5F                              		POP		EDI
+   303 00000193 C3                              		RET
+   304 00000194                                 
+   305 00000194                                 _farjmp:	; void farjmp(int eip, int cs);
+   306 00000194 FF 6C 24 04                     		JMP	FAR	[ESP+4]	; JMP cs:eip
+   307 00000198 C3                              		RET
+   308 00000199                                 
+   309 00000199                                 _api_call:	; API funtion as INT 0x30
+   310 00000199                                 		; CLI will be called automatically during INT
+   311 00000199 FB                              		STI
+   312 0000019A 1E                              		PUSH	DS
+   313 0000019B 06                              		PUSH	ES
+   314 0000019C 60                              		PUSHAD		; store values in application's stack
+   315 0000019D 60                              		PUSHAD		; arguments to _api_selection
+   316 0000019E 66 8C D0                        		MOV		AX,SS
+   317 000001A1 8E D8                           		MOV		DS,AX		; set to OS's segment
+   318 000001A3 8E C0                           		MOV		ES,AX
+   319 000001A5                                 
+   320 000001A5 E8 [00000000]                   		CALL		_api_selection
+   321 000001AA                                 
+   322 000001AA 83 F8 00                        		CMP		EAX,0		; When EAX is not 0, application ends
+   323 000001AD 75 07                           		JNE		_end_app
+   324 000001AF 83 C4 20                        		ADD		ESP,32
+   325 000001B2 61                              		POPAD
+   326 000001B3 07                              		POP		ES
+   327 000001B4 1F                              		POP		DS
+   328 000001B5 CF                              		IRETD
+   329 000001B6                                 _end_app:
+   330 000001B6                                 ;	EAX is tss.esp0 address
+   331 000001B6 8B 20                           		MOV		ESP,[EAX]
+   332 000001B8 61                              		POPAD
+   333 000001B9 C3                              		RET		; return to run_program(char *ext)
+   334 000001BA                                 
+   335 000001BA                                 _start_app:	; void start_app(int eip, int cs, int esp, int ds, int *tss_esp0);
+   336 000001BA 60                              		PUSHAD		; store registers
+   337 000001BB 8B 44 24 24                     		MOV		EAX,[ESP+36]	; EIP
+   338 000001BF 8B 4C 24 28                     		MOV		ECX,[ESP+40]	; CS
+   339 000001C3 8B 54 24 2C                     		MOV		EDX,[ESP+44]	; ESP
+   340 000001C7 8B 5C 24 30                     		MOV		EBX,[ESP+48]	; DS/SS
+   341 000001CB 8B 6C 24 34                     		MOV		EBP,[ESP+52]	; tss.esp0 address
+   342 000001CF 89 65 00                        		MOV		[EBP],ESP
+   343 000001D2 8C 55 04                        		MOV		[EBP+4],SS	; store OS' esp and ss in TSS
+   344 000001D5 8E C3                           		MOV		ES,BX
+   345 000001D7 8E DB                           		MOV		DS,BX
+   346 000001D9 8E E3                           		MOV		FS,BX
+   347 000001DB 8E EB                           		MOV		GS,BX
+   348 000001DD                                 ; Adjust stack to use RETF to call the application
+   349 000001DD 83 C9 03                        		OR		ECX,3		; CS or 3
+   350 000001E0 83 CB 03                        		OR		EBX,3		; DS or 3 : tricks to use RETF
+   351 000001E3 53                              		PUSH		EBX
+   352 000001E4 52                              		PUSH		EDX
+   353 000001E5 51                              		PUSH		ECX		; CS
+   354 000001E6 50                              		PUSH		EAX		; EIP
+   355 000001E7 CB                              		RETF				; When the segment is set to "application"
+   356 000001E8                                 						; CPU will automatically manage the segment registers
+   357 000001E8                                 		
