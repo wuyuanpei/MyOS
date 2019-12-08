@@ -5,7 +5,7 @@
 - Files in z_tools follow GPL
 ## Author
 - Developed by Richard Wu
-- Refer to the OSASK developped by Hidemi Kawai
+- Refer to the OSASK developed by Hidemi Kawai
 ## Usage
 Make the file:
 ```bash
