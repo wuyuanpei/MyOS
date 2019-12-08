@@ -8,17 +8,17 @@
 - Refer to the OSASK developped by Hidemi Kawai
 ## Usage
 Make the file:
-'''bash
+```bash
 make
-'''
+```
 Run the operating system in QEMU:
-'''bash
+```bash
 make run
-'''
+```
 Clear files:
-'''bash
+```bash
 make clean
-'''
+```
 ## Notes
 - Other tools provided in this repo include
 - BZ
